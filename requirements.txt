@@ -1,0 +1,15 @@
+# Core Dependencies
+pydantic
+requests
+psutil
+cryptography
+
+# UI (CustomTkinter for modern look and cross-platform ease)
+customtkinter
+
+# Voice Capabilities (Whisper for STT, pyttsx3 for TTS)
+openai-whisper
+pyttsx3
+
+# Local Model Integration (Ollama client)
+ollama
