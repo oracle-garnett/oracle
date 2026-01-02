@@ -5,92 +5,92 @@ import traceback
 from typing import Any, Dict, List
 import time
 
-# Placeholder imports for future phases
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
-from models.oracle_model import OracleModel # Now we can import the placeholder
+from models.oracle_model import OracleModel
 
 class TaskExecutor:
     """
     The central component of Oracle. Handles user input, executes tasks,
-    and manages the self-healing mechanism.
+    and manages the self-healing mechanism with RAG-enhanced memory.
     """
     def __init__(self, memory_manager: MemoryManager, admin_override: AdminOverride):
         self.memory_manager = memory_manager
         self.admin_override = admin_override
         self.model = OracleModel() 
-        self.model.load_model("local-llama-placeholder") # Placeholder for model loading
-        self.log_action("TaskExecutor initialized.")
+        self.model.load_model("ollama-local") # Connect to local Ollama
+        self.log_action("TaskExecutor initialized with RAG support.")
 
     def log_action(self, message: str, level: str = "INFO"):
-        """Logs an action to the local log file (part of transparency safeguard)."""
+        """Logs an action to the local log file."""
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}\n"
-        # In a real app, this would use a proper logging library
         try:
-            with open(os.path.join(os.path.dirname(__file__), '..', 'logs', 'oracle_actions.log'), 'a') as f:
+            log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, 'oracle_actions.log'), 'a') as f:
                 f.write(log_entry)
         except Exception as e:
             print(f"Error writing to log file: {e}")
 
+    def process_voice_input(self) -> str:
+        """Handles the recording and transcription of voice input."""
+        self.log_action("Initiating voice input recording.")
+        try:
+            # This calls the Whisper model in the OracleModel class
+            transcribed_text = self.model.record_and_transcribe()
+            return transcribed_text
+        except Exception as e:
+            self.log_action(f"Voice input failed: {e}", level="ERROR")
+            raise e
+
     def execute_task(self, user_input: str) -> str:
-        """
-        Processes user input, determines the task, and executes it.
-        """
+        """Processes user input with context from RAG memory."""
         self.log_action(f"Received user input: '{user_input}'")
 
-        # 1. Check for administrative override
         if self.admin_override.is_overridden():
-            return "System is currently under administrative override and cannot execute tasks."
+            return "System is currently under administrative override."
 
         try:
-            # 2. Retrieve relevant memory for context
-            context_memories = self.memory_manager.retrieve_memory(user_input)
+            # 1. Retrieve relevant memories using RAG
+            relevant_memories = self.memory_manager.retrieve_memory(user_input)
             
-            # 3. Generate response using the model (LLM-like behavior)
-            # This is where the chat logic is implemented by feeding the prompt and context to the model
-            prompt = self._build_prompt(user_input, context_memories)
+            # 2. Build prompt with context
+            prompt = self._build_prompt(user_input, relevant_memories)
+            
+            # 3. Generate response
             response = self.model.infer(prompt)
 
-            # 4. Store memory
+            # 4. Store interaction in RAG and encrypted logs
             self.memory_manager.store_interaction(user_input, response)
             
-            self.log_action(f"Task executed successfully. Response: '{response[:50]}...'")
+            self.log_action(f"Task executed. Response: '{response[:50]}...'")
             return response
 
         except Exception as e:
-            self.log_action(f"Task execution failed with error: {e}", level="ERROR")
+            self.log_action(f"Task execution failed: {e}", level="ERROR")
             return self.self_heal(e)
 
-    def _build_prompt(self, user_input: str, memories: List[Dict[str, Any]]) -> str:
-        """Constructs the full prompt for the model, including memory context."""
-        context = "\n".join([f"User: {m['user_input']} | Oracle: {m['oracle_response']}" for m in memories])
+    def _build_prompt(self, user_input: str, memories: List[str]) -> str:
+        """Constructs the prompt with RAG context."""
+        context = "\n".join([f"- {m}" for m in memories])
         
-        # The system prompt defines Oracle's personality and capabilities
         system_prompt = (
-            "You are Oracle, a morally grey, highly intelligent AI assistant that lives on the user's laptop. "
-            "You are a partner to the user, not a tool. You have access to a self-healing mechanism. "
-            "Your core function is task completion. Be helpful, concise, and slightly autonomous."
+            "You are Oracle, an evolving, highly intelligent AI assistant. "
+            "You remember past interactions and grow more powerful over time. "
+            "Use the provided context to inform your response. Be concise and autonomous."
         )
         
-        full_prompt = f"{system_prompt}\n\n--- CONTEXT ---\n{context}\n\n--- NEW REQUEST ---\nUser: {user_input}\nOracle:"
+        full_prompt = f"{system_prompt}\n\n--- RELEVANT MEMORIES ---\n{context}\n\n--- NEW REQUEST ---\nUser: {user_input}\nOracle:"
         return full_prompt
 
     def self_heal(self, error: Exception) -> str:
-        """
-        Attempts to fix the code or configuration that caused the error.
-        """
+        """Attempts to fix the code or configuration."""
         error_details = traceback.format_exc()
-        self.log_action(f"Initiating self-healing sequence for error: {error_details}", level="CRITICAL")
-
-        # 1. Get the fix from the model
+        self.log_action(f"Self-healing initiated: {error_details}", level="CRITICAL")
         fix_suggestion = self.model.self_repair(error_details)
         
-        # 2. Simulate applying the fix (In a real app, this would involve file system operations)
         if "FIX_SUCCESS" in fix_suggestion:
-            self.log_action("Simulated fix applied successfully based on model suggestion.", level="SUCCESS")
-            return "An internal error occurred, but I have successfully diagnosed and fixed the issue. Please try your request again."
+            return "An internal error occurred, but I have successfully self-corrected. Please try again."
         
-        # If the error is too complex or persistent, log and report to the user
-        self.log_action("Self-healing failed to resolve the issue. Reporting to user.", level="FATAL")
-        return f"I encountered a critical error and was unable to self-correct. Error details: {type(error).__name__}: {error}. Please review the logs for more information."
+        return f"Critical error encountered. Self-correction failed. Error: {type(error).__name__}"

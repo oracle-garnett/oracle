@@ -108,23 +108,36 @@ class FloatingPanel(ctk.CTk):
         """Handles the send button click or Enter key press."""
         user_input = self.input_entry.get()
         self.input_entry.delete(0, tk.END)
-        
         if user_input.strip():
-            self.append_output(f"You: {user_input}", "white")
-            
-            # Execute the task (this is where the core logic is called)
-            response = self.task_executor.execute_task(user_input)
-            self.append_output(f"Oracle: {response}", "#00ff00")
-            
-            # Text-to-Speech for the response
-            self.speak(response)
+            self.on_send_text(user_input)
+
+    def on_send_text(self, text: str):
+        """Processes the text input and gets a response from Oracle."""
+        self.append_output(f"You: {text}", "white")
+        
+        # Execute the task
+        response = self.task_executor.execute_task(text)
+        self.append_output(f"Oracle: {response}", "#00ff00")
+        
+        # Text-to-Speech for the response
+        self.speak(response)
 
     def on_voice_command(self):
-        """Placeholder for Whisper integration."""
-        self.append_output("Oracle: Listening for voice command... (Whisper integration pending)", "yellow")
-        # In a full implementation, this would call the Whisper module
-        # transcribed_text = self.task_executor.voice_input()
-        # self.on_send(transcribed_text)
+        """Activates the microphone and uses Whisper for speech-to-text."""
+        self.append_output("Oracle: Listening... (Speak now)", "yellow")
+        self.update() # Force UI update to show the message
+        
+        try:
+            # Call the task executor to handle voice input
+            transcribed_text = self.task_executor.process_voice_input()
+            
+            if transcribed_text:
+                self.append_output(f"You (Voice): {transcribed_text}", "white")
+                self.on_send_text(transcribed_text)
+            else:
+                self.append_output("Oracle: I didn't catch that. Could you repeat it?", "yellow")
+        except Exception as e:
+            self.append_output(f"Oracle: Voice error - {str(e)}", "red")
 
     def append_output(self, text: str, color: str):
         """Appends text to the output area."""

@@ -54,13 +54,33 @@ class OracleModel:
         
         return "FIX_FAILURE: Error is too complex for current self-repair model. Manual intervention required."
 
-    def speech_to_text(self, audio_file_path: str) -> str:
+    def record_and_transcribe(self, duration: int = 5) -> str:
         """
-        Transcribes audio to text using the Whisper model.
+        Records audio from the microphone and transcribes it using Whisper.
         """
-        # In a real scenario, this would call the Whisper model
-        print(f"Transcribing audio from {audio_file_path} using Whisper...")
-        return "Simulated transcription: 'Hello Oracle, please check my email.'"
+        import whisper
+        import sounddevice as sd
+        import scipy.io.wavfile as wav
+        import numpy as np
+
+        # 1. Load the Whisper model (will download on first run)
+        model = whisper.load_model("base")
+
+        # 2. Record audio
+        fs = 44100  # Sample rate
+        print(f"Recording for {duration} seconds...")
+        recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
+        sd.wait()  # Wait until recording is finished
+        
+        # 3. Save to temporary file
+        temp_filename = "temp_voice.wav"
+        wav.write(temp_filename, fs, recording)
+
+        # 4. Transcribe
+        result = model.transcribe(temp_filename)
+        os.remove(temp_filename) # Clean up
+        
+        return result["text"].strip()
 
     def text_to_speech(self, text: str):
         """

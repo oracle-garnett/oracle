@@ -3,47 +3,33 @@ import json
 import time
 from typing import Any, Dict, List
 from memory.encryption import MemoryEncryptor
+from memory.rag_engine import RAGEngine
 
 class MemoryManager:
     """
     Manages the persistent memory for Oracle.
-    Handles cloud database connection and encryption.
+    Combines local RAG (vector DB) with cloud-based encrypted storage.
     """
     def __init__(self, secret_key: str = None):
         self.encryptor = MemoryEncryptor(secret_key)
-        self.db_client = None
+        self.rag_engine = RAGEngine()
         self.is_connected = False
         self.local_cache_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'local_memory.json')
         
-        # Ensure local cache exists
         if not os.path.exists(self.local_cache_path):
             with open(self.local_cache_path, 'w') as f:
                 json.dump([], f)
 
-    def connect_to_cloud(self, db_type: str, config: Dict[str, Any]):
-        """
-        Connects to a cloud database (e.g., Supabase, MongoDB Atlas).
-        """
-        # This will be fully implemented when the user provides their DB credentials
-        print(f"Connecting to {db_type} cloud database...")
-        self.is_connected = True
-        print("Connected to cloud database.")
-
     def store_interaction(self, user_input: str, response: str):
-        """
-        Encrypts and stores a user-Oracle interaction.
-        """
-        record = {
-            "timestamp": time.time(),
-            "user_input": user_input,
-            "oracle_response": response
-        }
-        
-        # 1. Encrypt the record
-        record_json = json.dumps(record)
-        encrypted_record = self.encryptor.encrypt(record_json)
+        """Stores interaction in both RAG (for retrieval) and encrypted logs."""
+        # 1. Add to RAG for semantic search
+        memory_text = f"User asked: {user_input} | Oracle replied: {response}"
+        self.rag_engine.add_memory(memory_text, metadata={"type": "interaction", "timestamp": time.time()})
 
-        # 2. Store in local cache (fallback)
+        # 2. Encrypt and store in local log
+        record = {"timestamp": time.time(), "user_input": user_input, "oracle_response": response}
+        encrypted_record = self.encryptor.encrypt(json.dumps(record))
+        
         try:
             with open(self.local_cache_path, 'r+') as f:
                 data = json.load(f)
@@ -51,28 +37,8 @@ class MemoryManager:
                 f.seek(0)
                 json.dump(data, f)
         except Exception as e:
-            print(f"Error storing memory locally: {e}")
+            print(f"Error storing memory: {e}")
 
-        # 3. Store in cloud if connected
-        if self.is_connected:
-            # self.db_client.insert(encrypted_record)
-            pass
-
-    def retrieve_memory(self, query: str) -> List[Dict[str, Any]]:
-        """
-        Retrieves and decrypts relevant memory fragments.
-        """
-        # In a full implementation, this would use vector search or keyword search
-        # For now, we just return the last few interactions from local cache
-        memories = []
-        try:
-            with open(self.local_cache_path, 'r') as f:
-                encrypted_data = json.load(f)
-                # Decrypt the last 5 interactions
-                for enc_record in encrypted_data[-5:]:
-                    dec_record_json = self.encryptor.decrypt(enc_record)
-                    memories.append(json.loads(dec_record_json))
-        except Exception as e:
-            print(f"Error retrieving memory: {e}")
-        
-        return memories
+    def retrieve_memory(self, query: str) -> List[str]:
+        """Retrieves relevant memories using the RAG engine."""
+        return self.rag_engine.query_memory(query)

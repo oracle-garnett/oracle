@@ -4,12 +4,19 @@ requests
 psutil
 cryptography
 
-# UI (CustomTkinter for modern look and cross-platform ease)
+# UI (CustomTkinter for modern look)
 customtkinter
 
-# Voice Capabilities (Whisper for STT, pyttsx3 for TTS)
+# Voice Capabilities
 openai-whisper
 pyttsx3
+sounddevice
+scipy
 
-# Local Model Integration (Ollama client)
+# Local Model Integration
 ollama
+
+# RAG & Vector Database (for persistent, evolving memory)
+chromadb
+sentence-transformers
+numpy
