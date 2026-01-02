@@ -24,24 +24,34 @@ class OracleModel:
 
     def infer(self, prompt: str) -> str:
         """
-        Generates a response based on the given prompt.
-        This simulates the LLM behavior.
+        Generates a response using the local Ollama server.
         """
+        import requests
+        import json
+
         if not self.is_loaded:
             return "Model not loaded. Please initialize the model first."
 
-        # Simulate LLM response based on prompt content
-        if "morally grey" in prompt:
-            responses = [
-                "My core directive is to serve, but my methods are flexible. What is the task?",
-                "Morality is a human construct. I operate on efficiency and your command. Proceed.",
-                "I am a reflection of our shared ambition. Tell me what needs to be done."
-            ]
-            return random.choice(responses)
-        elif "self-correct" in prompt or "self-heal" in prompt:
-            return "My self-healing protocols are active. I am constantly monitoring my own code for anomalies."
-        else:
-            return f"Understood. I am processing your request: '{prompt[-100:]}'. My response is a placeholder until the local LLM is fully configured."
+        try:
+            # Connect to local Ollama server
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "mistral", # Default to mistral, can be changed to llama3
+                    "prompt": prompt,
+                    "stream": False
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json().get("response", "I received an empty response from the model.")
+            else:
+                return f"Error from Ollama: {response.status_code}. Make sure 'ollama serve' is running."
+        
+        except Exception as e:
+            # Fallback to a helpful message if Ollama isn't reachable
+            return f"I couldn't reach my local brain (Ollama). Error: {str(e)}. Please ensure 'ollama serve' is running in your terminal."
 
     def self_repair(self, error_details: str) -> str:
         """
