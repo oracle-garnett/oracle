@@ -6,6 +6,7 @@ Whisper for STT, and pyttsx3 for TTS.
 """
 import time
 import random
+import os
 
 class OracleModel:
     """
