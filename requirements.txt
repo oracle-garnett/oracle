@@ -13,6 +13,11 @@ pyttsx3
 sounddevice
 scipy
 
+# Vision Capabilities
+pyautogui
+Pillow
+pytesseract
+
 # Local Model Integration
 ollama
 

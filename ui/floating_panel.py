@@ -68,9 +68,13 @@ class FloatingPanel(ctk.CTk):
         send_btn = ctk.CTkButton(input_frame, text="Send", width=70, command=self.on_send)
         send_btn.grid(row=0, column=1, padx=5, pady=5)
 
-        # Voice Button (Placeholder for Whisper)
+        # Voice Button
         self.voice_btn = ctk.CTkButton(input_frame, text="🎤", width=30, command=self.on_voice_command)
-        self.voice_btn.grid(row=0, column=2, padx=(0, 5), pady=5)
+        self.voice_btn.grid(row=0, column=2, padx=(0, 2), pady=5)
+
+        # Vision Button (The Eye)
+        self.vision_btn = ctk.CTkButton(input_frame, text="👁️", width=30, command=self.on_vision_command)
+        self.vision_btn.grid(row=0, column=3, padx=(0, 5), pady=5)
 
         # Make window draggable
         self.bind("<ButtonPress-1>", self.start_move)
@@ -138,6 +142,22 @@ class FloatingPanel(ctk.CTk):
                 self.append_output("Oracle: I didn't catch that. Could you repeat it?", "yellow")
         except Exception as e:
             self.append_output(f"Oracle: Voice error - {str(e)}", "red")
+
+    def on_vision_command(self):
+        """Activates Oracle's vision to see the screen."""
+        self.append_output("Oracle: Observing your screen...", "cyan")
+        self.update()
+        
+        try:
+            # Capture visual context
+            visual_context = self.task_executor.process_visual_input()
+            
+            if visual_context["extracted_text"]:
+                self.append_output("Oracle: I see text on your screen. What should I do with it?", "cyan")
+            else:
+                self.append_output("Oracle: I've captured your screen. How can I help?", "cyan")
+        except Exception as e:
+            self.append_output(f"Oracle: Vision error - {str(e)}", "red")
 
     def append_output(self, text: str, color: str):
         """Appends text to the output area."""
