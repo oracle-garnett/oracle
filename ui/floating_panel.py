@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 from ui.themes import OracleThemes
 import math
+import random
 
 class OracleUI(ctk.CTk):
     def __init__(self, task_executor):
@@ -14,11 +15,15 @@ class OracleUI(ctk.CTk):
         self.is_orb_mode = False
         self.original_geometry = "400x500"
         
+        # Animation State
+        self.particles = []
+        self.angle = 0
+        
         # Window Configuration
         self.title("Oracle AI Assistant")
         self.geometry(self.original_geometry)
         self.attributes("-topmost", True)
-        self.overrideredirect(True) # Remove title bar for custom look
+        self.overrideredirect(True)
         self.attributes("-alpha", self.theme["transparency"])
         
         self.setup_ui()
@@ -29,7 +34,6 @@ class OracleUI(ctk.CTk):
         self.bind("<B1-Motion>", self.do_move)
 
     def setup_ui(self):
-        # Clear existing UI if any
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -40,6 +44,8 @@ class OracleUI(ctk.CTk):
 
     def setup_full_ui(self):
         self.configure(fg_color=self.theme["bg"])
+        self.attributes("-transparentcolor", "") # Reset transparency
+        self.geometry("400x500")
         
         # Custom Title Bar
         self.title_bar = ctk.CTkFrame(self, fg_color=self.theme["bg"], height=30)
@@ -82,38 +88,59 @@ class OracleUI(ctk.CTk):
         vision_btn.pack(side="left", padx=2)
 
     def setup_orb_ui(self):
-        self.geometry("60x60")
-        self.configure(fg_color="transparent")
-        self.attributes("-transparentcolor", "black") # Make black transparent for orb effect
+        self.geometry("100x100")
+        self.configure(fg_color="black")
+        self.attributes("-transparentcolor", "black")
         
-        # The Ghost Orb
-        self.orb_canvas = tk.Canvas(self, width=60, height=60, bg="black", highlightthickness=0)
+        self.orb_canvas = tk.Canvas(self, width=100, height=100, bg="black", highlightthickness=0)
         self.orb_canvas.pack()
         
-        # Draw the shimmering orb
-        self.draw_orb()
-        self.orb_canvas.bind("<Double-Button-1>", lambda e: self.toggle_orb_mode())
-
-    def draw_orb(self):
-        self.orb_canvas.delete("all")
-        color = self.theme["accent"]
-        # Simple shimmering effect using circles
-        for i in range(5):
-            alpha = 0.2 + (i * 0.1)
-            size = 20 + (i * 5)
-            self.orb_canvas.create_oval(30-size, 30-size, 30+size, 30+size, outline=color, width=2)
+        # Initialize particles for the "mist" effect
+        self.particles = []
+        for _ in range(20):
+            self.particles.append({
+                "x": 50, "y": 50,
+                "vx": random.uniform(-1, 1),
+                "vy": random.uniform(-1, 1),
+                "size": random.uniform(2, 5),
+                "color": random.choice(["#00d4ff", "#ffffff", "#007acc"])
+            })
         
-        self.orb_canvas.create_text(30, 30, text="O", fill=color, font=("Segoe UI", 14, "bold"))
+        self.orb_canvas.bind("<Double-Button-1>", lambda e: self.toggle_orb_mode())
+        self.animate_orb()
+
+    def animate_orb(self):
+        if not self.is_orb_mode:
+            return
+            
+        self.orb_canvas.delete("all")
+        self.angle += 0.1
+        
+        # Draw swirling mist layers
+        for i in range(3):
+            r = 25 + math.sin(self.angle + i) * 5
+            x = 50 + math.cos(self.angle * (i+1)) * 5
+            y = 50 + math.sin(self.angle * (i+1)) * 5
+            self.orb_canvas.create_oval(x-r, y-r, x+r, y+r, outline=self.theme["accent"], width=1)
+
+        # Update and draw particles (electricity/mist)
+        for p in self.particles:
+            p["x"] += p["vx"]
+            p["y"] += p["vy"]
+            
+            # Keep particles within the orb
+            dist = math.sqrt((p["x"]-50)**2 + (p["y"]-50)**2)
+            if dist > 30:
+                p["vx"] *= -1
+                p["vy"] *= -1
+            
+            self.orb_canvas.create_oval(p["x"]-p["size"], p["y"]-p["size"], p["x"]+p["size"], p["y"]+p["size"], fill=p["color"], outline="")
+
+        self.after(30, self.animate_orb)
 
     def toggle_orb_mode(self):
         self.is_orb_mode = not self.is_orb_mode
-        if self.is_orb_mode:
-            self.original_geometry = self.geometry()
-            self.setup_ui()
-        else:
-            self.geometry("400x500")
-            self.attributes("-transparentcolor", "") # Reset transparency
-            self.setup_ui()
+        self.setup_ui()
 
     def show_settings(self):
         settings_win = ctk.CTkToplevel(self)
