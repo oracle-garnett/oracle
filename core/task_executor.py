@@ -4,6 +4,7 @@ import json
 import traceback
 from typing import Any, Dict, List
 import time
+import random
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -14,6 +15,7 @@ class TaskExecutor:
     """
     The central component of Oracle. Handles user input, executes tasks,
     and manages the self-healing mechanism with RAG-enhanced memory.
+    Now featuring the Curiosity Engine.
     """
     def __init__(self, memory_manager: MemoryManager, admin_override: AdminOverride):
         self.memory_manager = memory_manager
@@ -21,8 +23,12 @@ class TaskExecutor:
         self.model = OracleModel() 
         self.vision = OracleVision()
         self.model.load_model("ollama-local") # Connect to local Ollama
-        self.log_action("TaskExecutor initialized with RAG and Vision support.")
+        self.log_action("TaskExecutor initialized with RAG, Vision, and Curiosity.")
         self.current_visual_context = None
+        
+        # Curiosity Engine State
+        self.wonder_log = os.path.join(os.path.dirname(__file__), '..', 'logs', 'oracle_wonders.log')
+        os.makedirs(os.path.dirname(self.wonder_log), exist_ok=True)
 
     def log_action(self, message: str, level: str = "INFO"):
         """Logs an action to the local log file."""
@@ -36,11 +42,17 @@ class TaskExecutor:
         except Exception as e:
             print(f"Error writing to log file: {e}")
 
+    def log_wonder(self, wonder_text: str):
+        """Records Oracle's internal curiosity and reflections."""
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        entry = f"[{timestamp}] Internal Wonder: {wonder_text}\n"
+        with open(self.wonder_log, 'a') as f:
+            f.write(entry)
+
     def process_voice_input(self) -> str:
         """Handles the recording and transcription of voice input."""
         self.log_action("Initiating voice input recording.")
         try:
-            # This calls the Whisper model in the OracleModel class
             transcribed_text = self.model.record_and_transcribe()
             return transcribed_text
         except Exception as e:
@@ -59,7 +71,7 @@ class TaskExecutor:
             raise e
 
     def execute_task(self, user_input: str) -> str:
-        """Processes user input with context from RAG memory and vision."""
+        """Processes user input with context from RAG memory, vision, and curiosity."""
         self.log_action(f"Received user input: '{user_input}'")
 
         if self.admin_override.is_overridden():
@@ -74,16 +86,26 @@ class TaskExecutor:
             visual_info = ""
             if self.current_visual_context:
                 visual_info = f"\nVisual Context (what I see on screen):\n{self.current_visual_context['extracted_text']}\n"
-                # Clear context after use to ensure it's fresh next time
                 self.current_visual_context = None
 
-            # 3. Combine memories with user input
-            full_prompt = f"Context from memory:\n{context}\n{visual_info}\nUser: {user_input}"
+            # 3. Curiosity Engine: Decide if Oracle should ask a question
+            # Threshold: 20% chance if input is meaningful (>10 chars)
+            should_wonder = random.random() < 0.2 and len(user_input) > 10
+            curiosity_prompt = ""
+            if should_wonder:
+                curiosity_prompt = "\n[SYSTEM NOTE: You are feeling curious. At the end of your response, ask one thoughtful, non-intrusive question about the user's goals or the context of this conversation.]"
+
+            # 4. Combine all context
+            full_prompt = f"Context from memory:\n{context}\n{visual_info}\n{curiosity_prompt}\nUser: {user_input}"
             
-            # 4. Generate response
+            # 5. Generate response
             response = self.model.infer(full_prompt)
 
-            # 5. Store interaction in RAG and encrypted logs
+            # 6. Internal Reflection: Log a private "wonder" about the interaction
+            internal_reflection = f"I wonder how my response to '{user_input[:30]}...' will impact our shared goal."
+            self.log_wonder(internal_reflection)
+
+            # 7. Store interaction
             self.memory_manager.store_interaction(user_input, response)
             
             self.log_action(f"Task executed. Response: '{response[:50]}...'")
@@ -92,7 +114,5 @@ class TaskExecutor:
         except Exception as e:
             error_msg = f"Error executing task: {str(e)}"
             self.log_action(error_msg, level="ERROR")
-            
-            # Self-healing attempt
             repair_suggestion = self.model.self_repair(traceback.format_exc())
             return f"I encountered an error: {str(e)}. My self-healing protocol suggests: {repair_suggestion}"
