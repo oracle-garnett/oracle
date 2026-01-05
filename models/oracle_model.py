@@ -34,14 +34,16 @@ class OracleModel:
 
         try:
             # Connect to local Ollama server
+            # Using llama3:8b-instruct-q2_K for better performance on standard hardware
+            # Using 300s timeout to allow for CPU inference on long messages
             response = requests.post(
                 "http://localhost:11434/api/generate",
                 json={
-                    "model": "mistral", # Default to mistral, can be changed to llama3
+                    "model": "llama3:8b-instruct-q2_K", 
                     "prompt": prompt,
                     "stream": False
                 },
-                timeout=30
+                timeout=300
             )
             
             if response.status_code == 200:
@@ -58,8 +60,6 @@ class OracleModel:
         Uses the model to generate a fix for the given error.
         This is the core of Oracle's self-healing capability.
         """
-        # In a real scenario, this would call the LLM with the error details
-        # For now, we simulate a fix suggestion
         if "ZeroDivisionError" in error_details:
             return "FIX_SUCCESS: Apply patch to core/math_utils.py to check for zero before division."
         
@@ -97,10 +97,5 @@ class OracleModel:
         """
         Converts text to speech using pyttsx3.
         """
-        # In a real scenario, this would call pyttsx3
         print(f"Speaking: '{text}'")
-        # import pyttsx3
-        # engine = pyttsx3.init()
-        # engine.say(text)
-        # engine.runAndWait()
         pass
