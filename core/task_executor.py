@@ -67,7 +67,8 @@ class TaskExecutor:
 
         try:
             # 1. Retrieve relevant memories
-            context = self.memory_manager.retrieve_context(user_input)
+            memories = self.memory_manager.retrieve_memory(user_input)
+            context = "\n".join(memories) if memories else "No relevant past memories found."
             
             # 2. Add visual context if available
             visual_info = ""
