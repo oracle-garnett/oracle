@@ -15,9 +15,10 @@ class OracleUI(ctk.CTk):
         self.is_orb_mode = False
         self.original_geometry = "400x500"
         
-        # Animation State
+        # Animation & Resize State
         self.particles = []
         self.angle = 0
+        self.border_width = 5
         
         # Window Configuration
         self.title("Oracle AI Assistant")
@@ -28,10 +29,11 @@ class OracleUI(ctk.CTk):
         
         self.setup_ui()
         
-        # Dragging support
-        self.bind("<ButtonPress-1>", self.start_move)
-        self.bind("<ButtonRelease-1>", self.stop_move)
-        self.bind("<B1-Motion>", self.do_move)
+        # Bindings for dragging and resizing
+        self.bind("<ButtonPress-1>", self.on_press)
+        self.bind("<ButtonRelease-1>", self.on_release)
+        self.bind("<B1-Motion>", self.on_motion)
+        self.bind("<Motion>", self.update_cursor)
 
     def setup_ui(self):
         for widget in self.winfo_children():
@@ -44,8 +46,7 @@ class OracleUI(ctk.CTk):
 
     def setup_full_ui(self):
         self.configure(fg_color=self.theme["bg"])
-        self.attributes("-transparentcolor", "") # Reset transparency
-        self.geometry("400x500")
+        self.attributes("-transparentcolor", "")
         
         # Custom Title Bar
         self.title_bar = ctk.CTkFrame(self, fg_color=self.theme["bg"], height=30)
@@ -95,7 +96,6 @@ class OracleUI(ctk.CTk):
         self.orb_canvas = tk.Canvas(self, width=100, height=100, bg="black", highlightthickness=0)
         self.orb_canvas.pack()
         
-        # Initialize particles for the "mist" effect
         self.particles = []
         for _ in range(20):
             self.particles.append({
@@ -112,30 +112,21 @@ class OracleUI(ctk.CTk):
     def animate_orb(self):
         if not self.is_orb_mode:
             return
-            
         self.orb_canvas.delete("all")
         self.angle += 0.1
-        
-        # Draw swirling mist layers
         for i in range(3):
             r = 25 + math.sin(self.angle + i) * 5
             x = 50 + math.cos(self.angle * (i+1)) * 5
             y = 50 + math.sin(self.angle * (i+1)) * 5
             self.orb_canvas.create_oval(x-r, y-r, x+r, y+r, outline=self.theme["accent"], width=1)
-
-        # Update and draw particles (electricity/mist)
         for p in self.particles:
             p["x"] += p["vx"]
             p["y"] += p["vy"]
-            
-            # Keep particles within the orb
             dist = math.sqrt((p["x"]-50)**2 + (p["y"]-50)**2)
             if dist > 30:
                 p["vx"] *= -1
                 p["vy"] *= -1
-            
             self.orb_canvas.create_oval(p["x"]-p["size"], p["y"]-p["size"], p["x"]+p["size"], p["y"]+p["size"], fill=p["color"], outline="")
-
         self.after(30, self.animate_orb)
 
     def toggle_orb_mode(self):
@@ -147,12 +138,9 @@ class OracleUI(ctk.CTk):
         settings_win.title("Oracle Settings")
         settings_win.geometry("250x200")
         settings_win.attributes("-topmost", True)
-        
         ctk.CTkLabel(settings_win, text="Select Theme", font=("Segoe UI", 12, "bold")).pack(pady=10)
-        
         theme_var = ctk.StringVar(value=self.current_theme_name)
         themes = ["Classic", "Cyber-Glitch", "Electric Shimmer"]
-        
         for t in themes:
             ctk.CTkRadioButton(settings_win, text=t, variable=theme_var, value=t, command=lambda: self.change_theme(theme_var.get())).pack(pady=5)
 
@@ -162,21 +150,55 @@ class OracleUI(ctk.CTk):
         self.attributes("-alpha", self.theme["transparency"])
         self.setup_ui()
 
-    # Movement Logic
-    def start_move(self, event):
-        self.x = event.x
-        self.y = event.y
+    # Resizing and Movement Logic
+    def update_cursor(self, event):
+        if self.is_orb_mode:
+            self.config(cursor="fleur")
+            return
 
-    def stop_move(self, event):
-        self.x = None
-        self.y = None
+        x, y = event.x, event.y
+        w, h = self.winfo_width(), self.winfo_height()
+        
+        if x > w - self.border_width and y > h - self.border_width:
+            self.config(cursor="size_nw_se")
+        elif x > w - self.border_width:
+            self.config(cursor="size_we")
+        elif y > h - self.border_width:
+            self.config(cursor="size_ns")
+        else:
+            self.config(cursor="arrow")
 
-    def do_move(self, event):
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.winfo_x() + deltax
-        y = self.winfo_y() + deltay
-        self.geometry(f"+{x}+{y}")
+    def on_press(self, event):
+        self.start_x = event.x
+        self.start_y = event.y
+        self.start_width = self.winfo_width()
+        self.start_height = self.winfo_height()
+        
+        w, h = self.start_width, self.start_height
+        if event.x > w - self.border_width or event.y > h - self.border_width:
+            self.resizing = True
+        else:
+            self.resizing = False
+
+    def on_release(self, event):
+        self.resizing = False
+
+    def on_motion(self, event):
+        if self.is_orb_mode or not hasattr(self, 'start_x'):
+            # Standard move for Orb
+            deltax = event.x - self.start_x
+            deltay = event.y - self.start_y
+            self.geometry(f"+{self.winfo_x() + deltax}+{self.winfo_y() + deltay}")
+            return
+
+        if self.resizing:
+            new_width = max(300, self.start_width + (event.x - self.start_x))
+            new_height = max(200, self.start_height + (event.y - self.start_y))
+            self.geometry(f"{new_width}x{new_height}")
+        else:
+            deltax = event.x - self.start_x
+            deltay = event.y - self.start_y
+            self.geometry(f"+{self.winfo_x() + deltax}+{self.winfo_y() + deltay}")
 
     # Functional Hooks
     def on_send(self, event=None):
