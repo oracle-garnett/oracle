@@ -1,86 +1,141 @@
-"""
-Floating Panel UI for Oracle using CustomTkinter.
-
-This provides a modern, dark-themed, floating, and collapsible panel.
-"""
-
-import customtkinter as ctk
 import tkinter as tk
-from core.task_executor import TaskExecutor # Import for type hinting
+import customtkinter as ctk
+from ui.themes import OracleThemes
+import math
 
-class FloatingPanel(ctk.CTk):
-    """
-    A floating, collapsible panel for Oracle that stays on top of other windows.
-    """
-    def __init__(self, task_executor: TaskExecutor, width: int = 400, height: int = 300):
+class OracleUI(ctk.CTk):
+    def __init__(self, task_executor):
         super().__init__()
         self.task_executor = task_executor
-        self.width = width
-        self.height = height
-        self.is_minimized = False
-        self.min_width = 80
-        self.min_height = 80
-        self.original_geometry = f"{self.width}x{self.height}"
-
-        # Configure window
+        
+        # State Management
+        self.current_theme_name = "Electric Shimmer"
+        self.theme = OracleThemes.get_theme(self.current_theme_name)
+        self.is_orb_mode = False
+        self.original_geometry = "400x500"
+        
+        # Window Configuration
         self.title("Oracle AI Assistant")
         self.geometry(self.original_geometry)
-        self.attributes('-topmost', True) # Keep on top
-        self.resizable(True, True)
-        self.configure(fg_color="#1e1e1e") # Dark background
-
-        # Set up grid layout
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
-
-        # --- Header Frame ---
-        header_frame = ctk.CTkFrame(self, fg_color="#2e2e2e")
-        header_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=(5, 0))
-        header_frame.grid_columnconfigure(1, weight=1)
-
-        # Title Label
-        title_label = ctk.CTkLabel(header_frame, text="Oracle", font=ctk.CTkFont(size=16, weight="bold"))
-        title_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
-
-        # Minimize Button
-        self.minimize_btn = ctk.CTkButton(header_frame, text="—", width=30, command=self.toggle_minimize)
-        self.minimize_btn.grid(row=0, column=2, padx=(0, 5), pady=5)
-
-        # Close Button
-        close_btn = ctk.CTkButton(header_frame, text="X", width=30, command=self.on_close)
-        close_btn.grid(row=0, column=3, padx=(0, 5), pady=5)
-
-        # --- Output Text Area ---
-        self.output_text = ctk.CTkTextbox(self, state="disabled", wrap="word", fg_color="#000000", text_color="#00ff00")
-        self.output_text.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-
-        # --- Input Frame ---
-        input_frame = ctk.CTkFrame(self, fg_color="#2e2e2e")
-        input_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=(0, 5))
-        input_frame.grid_columnconfigure(0, weight=1)
-
-        # Input Entry
-        self.input_entry = ctk.CTkEntry(input_frame, placeholder_text="Type your command or question...", fg_color="#3e3e3e")
-        self.input_entry.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
-        self.input_entry.bind("<Return>", self.on_send)
-
-        # Send Button
-        send_btn = ctk.CTkButton(input_frame, text="Send", width=70, command=self.on_send)
-        send_btn.grid(row=0, column=1, padx=5, pady=5)
-
-        # Voice Button
-        self.voice_btn = ctk.CTkButton(input_frame, text="🎤", width=30, command=self.on_voice_command)
-        self.voice_btn.grid(row=0, column=2, padx=(0, 2), pady=5)
-
-        # Vision Button (The Eye)
-        self.vision_btn = ctk.CTkButton(input_frame, text="👁️", width=30, command=self.on_vision_command)
-        self.vision_btn.grid(row=0, column=3, padx=(0, 5), pady=5)
-
-        # Make window draggable
+        self.attributes("-topmost", True)
+        self.overrideredirect(True) # Remove title bar for custom look
+        self.attributes("-alpha", self.theme["transparency"])
+        
+        self.setup_ui()
+        
+        # Dragging support
         self.bind("<ButtonPress-1>", self.start_move)
         self.bind("<ButtonRelease-1>", self.stop_move)
         self.bind("<B1-Motion>", self.do_move)
 
+    def setup_ui(self):
+        # Clear existing UI if any
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        if self.is_orb_mode:
+            self.setup_orb_ui()
+        else:
+            self.setup_full_ui()
+
+    def setup_full_ui(self):
+        self.configure(fg_color=self.theme["bg"])
+        
+        # Custom Title Bar
+        self.title_bar = ctk.CTkFrame(self, fg_color=self.theme["bg"], height=30)
+        self.title_bar.pack(fill="x", side="top")
+        
+        self.title_label = ctk.CTkLabel(self.title_bar, text="Oracle", font=(self.theme["font"][0], 12, "bold"), text_color=self.theme["accent"])
+        self.title_label.pack(side="left", padx=10)
+
+        # Control Buttons
+        close_btn = ctk.CTkButton(self.title_bar, text="✕", width=30, height=25, fg_color="transparent", hover_color="#ff4444", command=self.destroy)
+        close_btn.pack(side="right", padx=2)
+        
+        orb_btn = ctk.CTkButton(self.title_bar, text="🔮", width=30, height=25, fg_color="transparent", command=self.toggle_orb_mode)
+        orb_btn.pack(side="right", padx=2)
+        
+        settings_btn = ctk.CTkButton(self.title_bar, text="⚙️", width=30, height=25, fg_color="transparent", command=self.show_settings)
+        settings_btn.pack(side="right", padx=2)
+
+        # Chat Area
+        self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=self.theme["font"])
+        self.output_text.pack(fill="both", expand=True, padx=10, pady=5)
+        self.output_text.insert("0.0", "Oracle: Systems active. Ready for your command, partner.\n")
+        self.output_text.configure(state="disabled")
+
+        # Input Area
+        input_frame = ctk.CTkFrame(self, fg_color="transparent")
+        input_frame.pack(fill="x", side="bottom", padx=10, pady=10)
+
+        self.input_entry = ctk.CTkEntry(input_frame, placeholder_text="Type your command...", fg_color="#121212", text_color="white", border_color=self.theme["accent"])
+        self.input_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.input_entry.bind("<Return>", self.on_send)
+
+        send_btn = ctk.CTkButton(input_frame, text="Send", width=60, fg_color=self.theme["accent"], command=self.on_send)
+        send_btn.pack(side="left", padx=2)
+
+        mic_btn = ctk.CTkButton(input_frame, text="🎤", width=35, fg_color="transparent", command=self.on_voice_command)
+        mic_btn.pack(side="left", padx=2)
+
+        vision_btn = ctk.CTkButton(input_frame, text="👁️", width=35, fg_color="transparent", command=self.on_vision_command)
+        vision_btn.pack(side="left", padx=2)
+
+    def setup_orb_ui(self):
+        self.geometry("60x60")
+        self.configure(fg_color="transparent")
+        self.attributes("-transparentcolor", "black") # Make black transparent for orb effect
+        
+        # The Ghost Orb
+        self.orb_canvas = tk.Canvas(self, width=60, height=60, bg="black", highlightthickness=0)
+        self.orb_canvas.pack()
+        
+        # Draw the shimmering orb
+        self.draw_orb()
+        self.orb_canvas.bind("<Double-Button-1>", lambda e: self.toggle_orb_mode())
+
+    def draw_orb(self):
+        self.orb_canvas.delete("all")
+        color = self.theme["accent"]
+        # Simple shimmering effect using circles
+        for i in range(5):
+            alpha = 0.2 + (i * 0.1)
+            size = 20 + (i * 5)
+            self.orb_canvas.create_oval(30-size, 30-size, 30+size, 30+size, outline=color, width=2)
+        
+        self.orb_canvas.create_text(30, 30, text="O", fill=color, font=("Segoe UI", 14, "bold"))
+
+    def toggle_orb_mode(self):
+        self.is_orb_mode = not self.is_orb_mode
+        if self.is_orb_mode:
+            self.original_geometry = self.geometry()
+            self.setup_ui()
+        else:
+            self.geometry("400x500")
+            self.attributes("-transparentcolor", "") # Reset transparency
+            self.setup_ui()
+
+    def show_settings(self):
+        settings_win = ctk.CTkToplevel(self)
+        settings_win.title("Oracle Settings")
+        settings_win.geometry("250x200")
+        settings_win.attributes("-topmost", True)
+        
+        ctk.CTkLabel(settings_win, text="Select Theme", font=("Segoe UI", 12, "bold")).pack(pady=10)
+        
+        theme_var = ctk.StringVar(value=self.current_theme_name)
+        themes = ["Classic", "Cyber-Glitch", "Electric Shimmer"]
+        
+        for t in themes:
+            ctk.CTkRadioButton(settings_win, text=t, variable=theme_var, value=t, command=lambda: self.change_theme(theme_var.get())).pack(pady=5)
+
+    def change_theme(self, theme_name):
+        self.current_theme_name = theme_name
+        self.theme = OracleThemes.get_theme(theme_name)
+        self.attributes("-alpha", self.theme["transparency"])
+        self.setup_ui()
+
+    # Movement Logic
     def start_move(self, event):
         self.x = event.x
         self.y = event.y
@@ -96,92 +151,32 @@ class FloatingPanel(ctk.CTk):
         y = self.winfo_y() + deltay
         self.geometry(f"+{x}+{y}")
 
-    def toggle_minimize(self):
-        """Minimizes/restores the window."""
-        if self.is_minimized:
-            self.geometry(self.original_geometry)
-            self.is_minimized = False
-            self.minimize_btn.configure(text="—")
-        else:
-            self.original_geometry = self.geometry() # Save current size/position
-            self.geometry(f"{self.min_width}x{self.min_height}")
-            self.is_minimized = True
-            self.minimize_btn.configure(text="□")
-
+    # Functional Hooks
     def on_send(self, event=None):
-        """Handles the send button click or Enter key press."""
         user_input = self.input_entry.get()
         self.input_entry.delete(0, tk.END)
         if user_input.strip():
-            self.on_send_text(user_input)
-
-    def on_send_text(self, text: str):
-        """Processes the text input and gets a response from Oracle."""
-        self.append_output(f"You: {text}", "white")
-        
-        # Execute the task
-        response = self.task_executor.execute_task(text)
-        self.append_output(f"Oracle: {response}", "#00ff00")
-        
-        # Text-to-Speech for the response
-        self.speak(response)
+            self.append_output(f"You: {user_input}", "white")
+            response = self.task_executor.execute_task(user_input)
+            self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_voice_command(self):
-        """Activates the microphone and uses Whisper for speech-to-text."""
-        self.append_output("Oracle: Listening... (Speak now)", "yellow")
-        self.update() # Force UI update to show the message
-        
-        try:
-            # Call the task executor to handle voice input
-            transcribed_text = self.task_executor.process_voice_input()
-            
-            if transcribed_text:
-                self.append_output(f"You (Voice): {transcribed_text}", "white")
-                self.on_send_text(transcribed_text)
-            else:
-                self.append_output("Oracle: I didn't catch that. Could you repeat it?", "yellow")
-        except Exception as e:
-            self.append_output(f"Oracle: Voice error - {str(e)}", "red")
+        self.append_output("Oracle: Listening...", "yellow")
+        self.update()
+        text = self.task_executor.process_voice_input()
+        if text:
+            self.append_output(f"You (Voice): {text}", "white")
+            response = self.task_executor.execute_task(text)
+            self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_vision_command(self):
-        """Activates Oracle's vision to see the screen."""
-        self.append_output("Oracle: Observing your screen...", "cyan")
+        self.append_output("Oracle: Observing screen...", "cyan")
         self.update()
-        
-        try:
-            # Capture visual context
-            visual_context = self.task_executor.process_visual_input()
-            
-            if visual_context["extracted_text"]:
-                self.append_output("Oracle: I see text on your screen. What should I do with it?", "cyan")
-            else:
-                self.append_output("Oracle: I've captured your screen. How can I help?", "cyan")
-        except Exception as e:
-            self.append_output(f"Oracle: Vision error - {str(e)}", "red")
+        self.task_executor.process_visual_input()
+        self.append_output("Oracle: I see your screen. How can I help?", "cyan")
 
-    def append_output(self, text: str, color: str):
-        """Appends text to the output area."""
+    def append_output(self, text, color):
         self.output_text.configure(state="normal")
-        self.output_text.insert("end", text + "\n", color)
+        self.output_text.insert("end", f"{text}\n")
         self.output_text.configure(state="disabled")
         self.output_text.see("end")
-
-    def speak(self, text: str):
-        """Placeholder for Text-to-Speech."""
-        # In a full implementation, this would call the pyttsx3 module
-        # engine = pyttsx3.init()
-        # engine.say(text)
-        # engine.runAndWait()
-        pass
-
-    def on_close(self):
-        """Handles the close button click."""
-        self.quit()
-
-    def run(self):
-        """Starts the UI event loop."""
-        self.mainloop()
-
-# Set the appearance mode and color theme
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
