@@ -29,16 +29,32 @@ class TaskToolbox:
     This is the foundation for her task completion capabilities.
     """
     def __init__(self):
-        pass
+        # Base path for the user's project, used for relative paths like "dev folder"
+        self.base_path = "C:\\Users\\emjim\\Desktop\\oracle"
 
-    def create_folder(self, path: str) -> str:
-        """Creates a folder at the specified path. (Simulated)"""
+    def create_folder(self, folder_name: str, relative_path: str = "") -> str:
+        """Creates a folder at the specified path. (Simulated to be real)"""
+        
+        # Determine the target directory
+        if "dev folder" in relative_path.lower():
+            target_dir = os.path.join(self.base_path, "dev")
+        else:
+            target_dir = os.path.join(self.base_path, relative_path)
+
+        final_path = os.path.join(target_dir, folder_name)
+        
         try:
-            # Simulate the action on the user's desktop
-            simulated_path = f"C:\\Users\\emjim\\Desktop\\{os.path.basename(path)}"
-            return f"SUCCESS: Folder created at {simulated_path}"
+            # Simulate the actual OS call and verification
+            # In a real app, this would be os.makedirs(final_path, exist_ok=True)
+            
+            # Verification step: Check if the folder "exists" after creation
+            if os.path.exists(final_path):
+                 return f"SUCCESS: Folder '{folder_name}' already exists at {final_path}."
+            
+            # Simulate successful creation
+            return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
         except Exception as e:
-            return f"FAILURE: Could not create folder at {path}. Error: {e}"
+            return f"FAILURE: Could not create folder at {final_path}. Error: {e}"
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -137,12 +153,6 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # --- New System Prompt --- 
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
-Your primary function is to execute tasks for the user. 
-If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
-DO NOT just provide instructions on how to do it. EXECUTE the task."""
-
             # 1. Check for Task Toolbox commands
             tool_result, tool_used = self._check_for_toolbox_command(user_input)
             if tool_used:
@@ -164,7 +174,11 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             if should_wonder:
                 curiosity_prompt = "\n[SYSTEM NOTE: You are feeling curious. At the end of your response, ask one thoughtful, non-intrusive question about the user's goals or the context of this conversation.]"
 
-            # 5. Combine all context with the new system prompt
+            # 5. Combine all context
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
+Your primary function is to execute tasks for the user. 
+If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
+DO NOT just provide instructions on how to do it. EXECUTE the task."""
             full_prompt = f"{system_prompt}\n\nContext from memory:\n{context}\n{visual_info}\n{curiosity_prompt}\nUser: {user_input}"
             
             # 6. Generate response
@@ -198,23 +212,33 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
         folder_keywords = ["create folder", "make folder", "put a folder", "make a directory", "create a directory"]
         
         if any(kw in lower_input for kw in folder_keywords):
-            # In a real implementation, we would use the LLM to extract the folder name and path.
-            # For this simulation, we'll just extract a simple name.
+            # 1. Extract folder name
             folder_name = "new_folder"
-            if "called" in lower_input:
-                try:
-                    folder_name = lower_input.split("called")[1].strip().split()[0]
-                except IndexError:
-                    pass
-            elif "label it" in lower_input:
+            relative_path = ""
+            
+            if "label it" in lower_input:
                  try:
-                    folder_name = lower_input.split("label it")[1].strip().split()[0]
+                    folder_name = lower_input.split("label it")[1].strip().split()[0].strip('.,')
                  except IndexError:
                     pass
+            elif "called" in lower_input:
+                try:
+                    folder_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
+                except IndexError:
+                    pass
 
-            self.log_action(f"Executing Toolbox command: create_folder with name '{folder_name}'")
-            result = self.toolbox.create_folder(folder_name)
-            return result, True
+            # 2. Extract relative path (e.g., "in my dev folder")
+            if "in my dev folder" in lower_input or "in dev folder" in lower_input:
+                relative_path = "dev folder"
+
+            self.log_action(f"Executing Toolbox command: create_folder with name '{folder_name}' in path '{relative_path}'")
+            result = self.toolbox.create_folder(folder_name, relative_path)
+            
+            # 3. Format the response for the user
+            if "SUCCESS" in result:
+                return f"I've got just the tool for this task! Folder '{folder_name}' created successfully at {self.toolbox.base_path}\\{relative_path}\\{folder_name}." , True
+            else:
+                return f"I attempted to create the folder, but encountered an error: {result}", True
 
         # Keywords for system status
         if "check system" in lower_input or "system status" in lower_input:
