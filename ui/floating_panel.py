@@ -1,8 +1,8 @@
 import tkinter as tk
 import customtkinter as ctk
-from ui.themes import OracleThemes
 import math
 import random
+from ui.themes import OracleThemes # Assuming this exists in user's environment
 
 class OracleUI(ctk.CTk):
     def __init__(self, task_executor):
@@ -68,7 +68,8 @@ class OracleUI(ctk.CTk):
         # Chat Area
         self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=self.theme["font"])
         self.output_text.pack(fill="both", expand=True, padx=10, pady=5)
-        self.output_text.insert("0.0", "Oracle: Hey dad, my systems are ready for your instructions.\n")},{find:
+        # --- The requested greeting ---
+        self.output_text.insert("0.0", "Oracle: Hey dad, my systems are ready for your instructions.\n")
         self.output_text.configure(state="disabled")
 
         # Input Area
@@ -89,6 +90,7 @@ class OracleUI(ctk.CTk):
         vision_btn.pack(side="left", padx=2)
 
     def setup_orb_ui(self):
+        # ... (Orb UI setup logic)
         self.geometry("100x100")
         self.configure(fg_color="black")
         self.attributes("-transparentcolor", "black")
@@ -110,6 +112,7 @@ class OracleUI(ctk.CTk):
         self.animate_orb()
 
     def animate_orb(self):
+        # ... (Orb animation logic)
         if not self.is_orb_mode:
             return
         self.orb_canvas.delete("all")
@@ -136,13 +139,42 @@ class OracleUI(ctk.CTk):
     def show_settings(self):
         settings_win = ctk.CTkToplevel(self)
         settings_win.title("Oracle Settings")
-        settings_win.geometry("250x200")
+        settings_win.geometry("300x350")
         settings_win.attributes("-topmost", True)
-        ctk.CTkLabel(settings_win, text="Select Theme", font=("Segoe UI", 12, "bold")).pack(pady=10)
+        
+        ctk.CTkLabel(settings_win, text="System Configuration", font=("Segoe UI", 14, "bold")).pack(pady=10)
+        
+        # --- Theme Selection ---
+        ctk.CTkLabel(settings_win, text="Theme Selection", font=("Segoe UI", 12, "bold")).pack(pady=(10, 0))
         theme_var = ctk.StringVar(value=self.current_theme_name)
         themes = ["Classic", "Cyber-Glitch", "Electric Shimmer"]
+        theme_frame = ctk.CTkFrame(settings_win)
+        theme_frame.pack(pady=5, padx=10)
         for t in themes:
-            ctk.CTkRadioButton(settings_win, text=t, variable=theme_var, value=t, command=lambda: self.change_theme(theme_var.get())).pack(pady=5)
+            ctk.CTkRadioButton(theme_frame, text=t, variable=theme_var, value=t, command=lambda t=t: self.change_theme(t)).pack(side="left", padx=5)
+
+        # --- Stability Dashboard ---
+        ctk.CTkLabel(settings_win, text="Stability Dashboard", font=("Segoe UI", 12, "bold")).pack(pady=(10, 0))
+        
+        # Ollama Timeout Slider
+        timeout_frame = ctk.CTkFrame(settings_win)
+        timeout_frame.pack(pady=5, padx=10, fill="x")
+        
+        # Get current config value from TaskExecutor
+        current_timeout = self.task_executor.config.get("ollama_timeout", 3000)
+        self.timeout_label = ctk.CTkLabel(timeout_frame, text=f"Ollama Timeout: {current_timeout}s")
+        self.timeout_label.pack(pady=(0, 5))
+        
+        # Slider range from 30s to 3600s (1 hour)
+        self.timeout_slider = ctk.CTkSlider(timeout_frame, from_=30, to=3600, number_of_steps=357, command=self.update_timeout)
+        self.timeout_slider.set(current_timeout)
+        self.timeout_slider.pack(fill="x")
+
+    def update_timeout(self, value):
+        new_timeout = int(value)
+        self.timeout_label.configure(text=f"Ollama Timeout: {new_timeout}s")
+        # Update the configuration via the TaskExecutor
+        self.task_executor.update_config("ollama_timeout", new_timeout)
 
     def change_theme(self, theme_name):
         self.current_theme_name = theme_name
@@ -152,6 +184,7 @@ class OracleUI(ctk.CTk):
 
     # Resizing and Movement Logic
     def update_cursor(self, event):
+        # ... (Cursor logic)
         if self.is_orb_mode:
             self.config(cursor="fleur")
             return
@@ -169,6 +202,7 @@ class OracleUI(ctk.CTk):
             self.config(cursor="arrow")
 
     def on_press(self, event):
+        # ... (Press logic)
         self.start_x = event.x
         self.start_y = event.y
         self.start_width = self.winfo_width()
@@ -184,6 +218,7 @@ class OracleUI(ctk.CTk):
         self.resizing = False
 
     def on_motion(self, event):
+        # ... (Motion logic)
         if self.is_orb_mode or not hasattr(self, 'start_x'):
             # Standard move for Orb
             deltax = event.x - self.start_x
@@ -202,6 +237,7 @@ class OracleUI(ctk.CTk):
 
     # Functional Hooks
     def on_send(self, event=None):
+        # ... (Send logic)
         user_input = self.input_entry.get()
         self.input_entry.delete(0, tk.END)
         if user_input.strip():
@@ -210,6 +246,7 @@ class OracleUI(ctk.CTk):
             self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_voice_command(self):
+        # ... (Voice logic)
         self.append_output("Oracle: Listening...", "yellow")
         self.update()
         text = self.task_executor.process_voice_input()
@@ -219,12 +256,14 @@ class OracleUI(ctk.CTk):
             self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_vision_command(self):
+        # ... (Vision logic)
         self.append_output("Oracle: Observing screen...", "cyan")
         self.update()
         self.task_executor.process_visual_input()
         self.append_output("Oracle: I see your screen. How can I help?", "cyan")
 
     def append_output(self, text, color):
+        # ... (Output logic)
         self.output_text.configure(state="normal")
         self.output_text.insert("end", f"{text}\n")
         self.output_text.configure(state="disabled")
