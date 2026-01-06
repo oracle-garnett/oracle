@@ -36,8 +36,8 @@ class TaskToolbox:
         """Creates a folder at the specified path. (Now using real os.makedirs)"""
         
         # Determine the target directory
-        if "dev folder" in relative_path.lower():
-            # If user specifies "dev folder", the target is the base path itself (C:\dev)
+        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
+            # If user specifies "dev folder" or C:\dev, the target is the base path itself (C:\dev)
             target_dir = self.base_path
         else:
             # Fallback to a safe location if no specific path is given (e.g., Desktop)
@@ -157,35 +157,38 @@ class TaskExecutor:
             # 1. Check for Task Toolbox commands
             tool_result, tool_used = self._check_for_toolbox_command(user_input)
             if tool_used:
+                # If a tool was used, return the result directly, bypassing the LLM
                 return tool_result
 
-            # 2. Retrieve relevant memories
+            # 2. If no tool was used, proceed to LLM inference
+            
+            # 2.1 Retrieve relevant memories
             memories = self.memory_manager.retrieve_memory(user_input)
             context = "\n".join(memories) if memories else "No relevant past memories found."
             
-            # 3. Add visual context if available
+            # 2.2 Add visual context if available
             visual_info = ""
             if self.current_visual_context:
                 visual_info = f"\nVisual Context (what I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            # 4. Curiosity Engine
+            # 2.3 Curiosity Engine
             should_wonder = random.random() < self.config["curiosity_chance"] and len(user_input) > 10
             curiosity_prompt = ""
             if should_wonder:
                 curiosity_prompt = "\n[SYSTEM NOTE: You are feeling curious. At the end of your response, ask one thoughtful, non-intrusive question about the user's goals or the context of this conversation.]"
 
-            # 5. Combine all context
+            # 2.4 Combine all context
             system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
 Your primary function is to execute tasks for the user. 
 If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
 DO NOT just provide instructions on how to do it. EXECUTE the task."""
             full_prompt = f"{system_prompt}\n\nContext from memory:\n{context}\n{visual_info}\n{curiosity_prompt}\nUser: {user_input}"
             
-            # 6. Generate response
+            # 2.5 Generate response
             response = self.model.infer(full_prompt)
 
-            # 7. Store interaction and log
+            # 3. Store interaction and log
             self.memory_manager.store_interaction(user_input, response)
             self.log_action(f"Task executed. Response: '{response[:50]}...'")
             return response
@@ -209,14 +212,18 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
         """
         lower_input = user_input.lower()
         
-        # Keywords for folder creation
-        folder_keywords = ["create folder", "make folder", "put a folder", "make a directory", "create a directory"]
+        # --- AGGRESSIVE FUZZY PARSING FOR FOLDER CREATION ---
+        # Look for the intent: (make/create/put) AND (folder/directory) AND (name/label)
+        has_action = any(kw in lower_input for kw in ["make", "create", "put"])
+        has_target = any(kw in lower_input for kw in ["folder", "directory"])
+        has_name_intent = any(kw in lower_input for kw in ["label", "called", "name"])
         
-        if any(kw in lower_input for kw in folder_keywords):
+        if has_action and has_target:
             # 1. Extract folder name
             folder_name = "new_folder"
             relative_path = ""
             
+            # Try to extract the name after "label it" or "called"
             if "label it" in lower_input:
                  try:
                     folder_name = lower_input.split("label it")[1].strip().split()[0].strip('.,')
@@ -227,16 +234,17 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
                     folder_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
                 except IndexError:
                     pass
+            elif "test" in lower_input:
+                folder_name = "test"
 
             # 2. Extract relative path (e.g., "in my dev folder")
-            if "in my dev folder" in lower_input or "in dev folder" in lower_input:
+            if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
                 relative_path = "dev folder"
 
             self.log_action(f"Executing Toolbox command: create_folder with name '{folder_name}' in path '{relative_path}'")
             result = self.toolbox.create_folder(folder_name, relative_path)
             
-            # 3. Format the response for the user
-            # The Toolbox returns the final formatted string (SUCCESS or FAILURE)
+            # 3. Return the result directly (Hard-Wired Response)
             return result, True
 
         # Keywords for system status
