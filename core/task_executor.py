@@ -236,13 +236,8 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             result = self.toolbox.create_folder(folder_name, relative_path)
             
             # 3. Format the response for the user
-            if "SUCCESS" in result:
-                # The Toolbox returns the final path on success
-                final_path = result.split(" at ")[-1].strip('.')
-                return f"I've got just the tool for this task! Folder '{folder_name}' created successfully at {final_path}.", True
-            else:
-                # The Toolbox returns the Windows Error on failure
-                return f"I attempted to create the folder, but encountered an error: {result}", True
+            # The Toolbox returns the final formatted string (SUCCESS or FAILURE)
+            return result, True
 
         # Keywords for system status
         if "check system" in lower_input or "system status" in lower_input:
