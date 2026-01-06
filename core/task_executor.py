@@ -29,32 +29,33 @@ class TaskToolbox:
     This is the foundation for her task completion capabilities.
     """
     def __init__(self):
-        # Base path for the user's project, used for relative paths like "dev folder"
-        self.base_path = "C:\\Users\\emjim\\Desktop\\oracle"
+        # Corrected base path based on user feedback: C:\dev is the root for the dev folder
+        self.base_path = "C:\\dev"
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
-        """Creates a folder at the specified path. (Simulated to be real)"""
+        """Creates a folder at the specified path. (Now using real os.makedirs)"""
         
         # Determine the target directory
         if "dev folder" in relative_path.lower():
-            target_dir = os.path.join(self.base_path, "dev")
+            # If user specifies "dev folder", the target is the base path itself (C:\dev)
+            target_dir = self.base_path
         else:
-            target_dir = os.path.join(self.base_path, relative_path)
+            # Fallback to a safe location if no specific path is given (e.g., Desktop)
+            target_dir = "C:\\Users\\emjim\\Desktop"
 
         final_path = os.path.join(target_dir, folder_name)
         
         try:
-            # Simulate the actual OS call and verification
-            # In a real app, this would be os.makedirs(final_path, exist_ok=True)
+            # --- REAL OS EXECUTION ---
+            os.makedirs(final_path, exist_ok=True)
             
-            # Verification step: Check if the folder "exists" after creation
+            # Verification step: Check if the folder exists after creation
             if os.path.exists(final_path):
-                 return f"SUCCESS: Folder '{folder_name}' already exists at {final_path}."
-            
-            # Simulate successful creation
-            return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
+                 return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
+            else:
+                 return f"FAILURE: Folder creation failed, but no exception was raised. Path: {final_path}"
         except Exception as e:
-            return f"FAILURE: Could not create folder at {final_path}. Error: {e}"
+            return f"FAILURE: Could not create folder at {final_path}. Windows Error: {e}"
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -236,8 +237,11 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             
             # 3. Format the response for the user
             if "SUCCESS" in result:
-                return f"I've got just the tool for this task! Folder '{folder_name}' created successfully at {self.toolbox.base_path}\\{relative_path}\\{folder_name}." , True
+                # The Toolbox returns the final path on success
+                final_path = result.split(" at ")[-1].strip('.')
+                return f"I've got just the tool for this task! Folder '{folder_name}' created successfully at {final_path}.", True
             else:
+                # The Toolbox returns the Windows Error on failure
                 return f"I attempted to create the folder, but encountered an error: {result}", True
 
         # Keywords for system status
