@@ -13,12 +13,14 @@ class OracleModel:
     The "brain" of Oracle. This class will interface with the selected AI model(s).
     """
     def __init__(self):
+        self.ollama_timeout = 3000 # Default to 3000s as requested by user
         self.model_name = None
         self.is_loaded = False
 
     def load_model(self, model_name: str):
         """Loads the specified AI model (placeholder for Ollama/Whisper)."""
-        self.model_name = model_name
+            self.model_name = model_name
+            self.ollama_timeout = 3000 # Reset to default on load, will be updated by TaskExecutor config
         self.is_loaded = True
         print(f"Model '{model_name}' interface loaded. (Actual model loading with Ollama/Whisper is a user-side setup step.)")
 
@@ -39,11 +41,11 @@ class OracleModel:
             response = requests.post(
                 "http://localhost:11434/api/generate",
                 json={
-                    "model": "llama3:8b-instruct-q2_K", 
+                    "model": self.model_name, 
                     "prompt": prompt,
                     "stream": False
                 },
-                timeout=300
+                timeout=self.ollama_timeout
             )
             
             if response.status_code == 200:

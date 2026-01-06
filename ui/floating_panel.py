@@ -68,7 +68,7 @@ class OracleUI(ctk.CTk):
         # Chat Area
         self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=self.theme["font"])
         self.output_text.pack(fill="both", expand=True, padx=10, pady=5)
-        self.output_text.insert("0.0", "Oracle: Systems active. Ready for your command, partner.\n")
+        self.output_text.insert("0.0", "Oracle: Hey dad, my systems are ready for your instructions.\n")},{find:
         self.output_text.configure(state="disabled")
 
         # Input Area
