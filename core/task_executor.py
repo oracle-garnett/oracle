@@ -5,6 +5,7 @@ import traceback
 from typing import Any, Dict, List
 import time
 import random
+import shutil # Added for file organization
 
 # --- Placeholder Imports for Dependencies ---
 # These are needed to make the TaskExecutor class runnable in the user's environment
@@ -25,68 +26,92 @@ from models.oracle_model import OracleModel
 # --- Task Toolbox ---
 class TaskToolbox:
     """
-    A collection of local system functions Oracle can execute.
+    A collection of local system functions Oracle can execute directly.
     This is the foundation for her task completion capabilities.
     """
     def __init__(self):
         # Corrected base path based on user feedback: C:\dev is the root for the dev folder
         self.base_path = "C:\\dev"
+        # Ensure the base path exists for direct operations
+        os.makedirs(self.base_path, exist_ok=True)
 
     def _get_target_path(self, relative_path: str) -> str:
-        """Helper to determine the correct base directory for PowerShell commands."""
+        """Helper to determine the correct base directory for direct Python operations."""
         if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
             return self.base_path
         elif "desktop" in relative_path.lower():
-            return "C:\\Users\\emjim\\Desktop"
+            return os.path.join(os.path.expanduser("~"), "Desktop") # Use os.path.expanduser for cross-platform Desktop
         else:
             # Default to the project root for safety if no path is specified
-            return "C:\\Users\\emjim\\Desktop\\oracle"
+            return os.path.join(os.path.expanduser("~"), "Desktop", "oracle")
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
-        """Generates a PowerShell command to create a folder at the specified path."""
+        """Creates a folder at the specified path using direct Python os.makedirs."""
         
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, folder_name)
         
-        # Generate PowerShell command
-        powershell_command = f"New-Item -Path \"{final_path}\" -ItemType Directory -Force"
-        return f"To create the folder, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the folder was created successfully."
+        try:
+            os.makedirs(final_path, exist_ok=True)
+            if os.path.exists(final_path):
+                 return f"SUCCESS: Folder \'{folder_name}\' created at {final_path}."
+            else:
+                 return f"FAILURE: Folder creation failed, but no exception was raised. Path: {final_path}"
+        except Exception as e:
+            return f"FAILURE: Could not create folder at {final_path}. System Error: {e}"
 
     def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
-        """Generates a PowerShell command to write content to a file at the specified path."""
+        """Writes content to a file at the specified path using direct Python file operations."""
         
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, file_name)
         
-        # Escape content for PowerShell (single quotes for literal string)
-        escaped_content = content.replace("\"", "`"") # Escape double quotes
-        
-        # Generate PowerShell command
-        powershell_command = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
-        return f"To write to the file, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the file was created/updated successfully."
+        try:
+            os.makedirs(os.path.dirname(final_path), exist_ok=True) # Ensure parent directory exists
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            if os.path.exists(final_path):
+                return f"SUCCESS: File \'{file_name}\' created at {final_path} with content: \'{content[:50]}...\'."
+            else:
+                return f"FAILURE: File creation failed, but no exception was raised. Path: {final_path}"
+        except Exception as e:
+            return f"FAILURE: Could not create file at {final_path}. System Error: {e}"
 
     def dictate_note(self, note_content: str, file_name: str = "dictated_note.txt", relative_path: str = "") -> str:
-        """Generates a PowerShell command to save dictated content to a file."""
+        """Saves dictated content to a file using direct Python file operations."""
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, file_name)
         
-        escaped_content = note_content.replace("\"", "`"")
-        powershell_command = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
-        return f"To save your dictated note, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the note was saved successfully."
+        try:
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(note_content)
+            
+            if os.path.exists(final_path):
+                return f"SUCCESS: Dictated note saved to \'{file_name}\' at {final_path}."
+            else:
+                return f"FAILURE: Dictated note saving failed, but no exception was raised. Path: {final_path}"
+        except Exception as e:
+            return f"FAILURE: Could not save dictated note at {final_path}. System Error: {e}"
 
     def organize_document(self, doc_name: str, doc_content: str, category: str = "documents", relative_path: str = "") -> str:
-        """Generates PowerShell commands to create a categorized folder and save a document."""
+        """Creates a categorized folder and saves a document using direct Python operations."""
         base_target_dir = self._get_target_path(relative_path)
         category_dir = os.path.join(base_target_dir, category)
         final_path = os.path.join(category_dir, doc_name)
 
-        escaped_content = doc_content.replace("\"", "`"")
-
-        # Generate PowerShell commands for folder and file creation
-        powershell_command_folder = f"New-Item -Path \"{category_dir}\" -ItemType Directory -Force"
-        powershell_command_file = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
-
-        return f"To organize your document, please run these PowerShell commands in order:\n```powershell\n{powershell_command_folder}\n{powershell_command_file}\n```\nAfter running them, please confirm if the document was organized successfully."
+        try:
+            os.makedirs(category_dir, exist_ok=True) # Ensure category folder exists
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(doc_content)
+            
+            if os.path.exists(final_path):
+                return f"SUCCESS: Document \'{doc_name}\' organized into \'{category}\' at {final_path}."
+            else:
+                return f"FAILURE: Document organization failed, but no exception was raised. Path: {final_path}"
+        except Exception as e:
+            return f"FAILURE: Could not organize document at {final_path}. System Error: {e}"
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -162,10 +187,9 @@ class TaskExecutor:
     def process_voice_input(self) -> str:
         self.log_action("Initiating voice input recording.")
         try:
-            # Simulate Whisper transcription
             # In a real scenario, this would call self.model.record_and_transcribe()
-            # For now, we'll return a placeholder or prompt the user for input if needed.
-            return "[Simulated voice input: This is a test dictation.]"
+            # For now, we'll prompt the user for input if needed.
+            return "[DICTATION_REQUEST]: Please type the content you wish to dictate now." #END_DICTATION_REQUEST#"
         except Exception as e:
             self.log_action(f"Voice input failed: {e}", level="ERROR")
             raise e
@@ -278,7 +302,7 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             return result, True
 
         # --- AGGRESSIVE FUZZY PARSING FOR FILE WRITING ---
-        has_write_action = any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["to file", "content", "text"])
+        has_write_action = any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["to file", "content", "text", "file"])
         if has_write_action:
             file_name = "new_file.txt"
             content = ""
@@ -292,6 +316,7 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
                     pass
             elif "file" in lower_input:
                 try:
+                    # Look for a word ending in a common extension
                     words = lower_input.split()
                     for word in words:
                         if word.endswith((".txt", ".py", ".cert", ".md")):
@@ -299,24 +324,24 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
                             break
                 except Exception:
                     pass
-            
-            # Extract content
-            if "content" in lower_input:
-                try:
-                    content_start = lower_input.find("content") + len("content")
-                    content_end = lower_input.find("in file") if "in file" in lower_input else len(lower_input)
-                    content = user_input[content_start:content_end].strip().strip('"\'')
-                except Exception:
-                    pass
-            elif "put" in lower_input and "inside" in lower_input:
+
+            # Simple content extraction (e.g., 'put "Hello Dad" inside it')
+            if "put" in lower_input and "inside" in lower_input:
                 try:
                     start = lower_input.find("put") + 3
                     end = lower_input.find("inside")
                     content = user_input[start:end].strip().strip('"\'')
                 except Exception:
                     pass
-
-            # Extract relative path
+            elif "content" in lower_input:
+                try:
+                    content_start = lower_input.find("content") + len("content")
+                    content_end = lower_input.find("in file") if "in file" in lower_input else len(lower_input)
+                    content = user_input[content_start:content_end].strip().strip('"\'')
+                except Exception:
+                    pass
+            
+            # 2. Extract relative path
             if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
                 relative_path = "dev folder"
 
@@ -329,7 +354,7 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
         if has_dictate_action:
             self.log_action("Initiating voice input for dictation.")
             # In a real scenario, this would trigger actual voice recording and transcription
-            # For now, we'll simulate it and expect the user to provide the content.
+            # For now, we'll prompt the user for input if needed.
             simulated_transcription = self.process_voice_input() # Calls the simulated Whisper
             
             file_name = "dictated_note.txt"
