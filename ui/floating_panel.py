@@ -11,6 +11,7 @@ class OracleUI(ctk.CTk):
         
         # State Management
         self.current_theme_name = "Electric Shimmer"
+        self.font_size = 12 # Default font size
         self.theme = OracleThemes.get_theme(self.current_theme_name)
         self.is_orb_mode = False
         self.original_geometry = "400x500"
@@ -66,7 +67,7 @@ class OracleUI(ctk.CTk):
         settings_btn.pack(side="right", padx=2)
 
         # Chat Area
-        self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=self.theme["font"])
+        self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=(self.theme["font"][0], self.font_size))
         self.output_text.pack(fill="both", expand=True, padx=10, pady=5)
         # --- The requested greeting ---
         self.output_text.insert("0.0", "Oracle: Hey dad, my systems are ready for your instructions.\n")
@@ -169,6 +170,22 @@ class OracleUI(ctk.CTk):
         self.timeout_slider = ctk.CTkSlider(timeout_frame, from_=30, to=3600, number_of_steps=357, command=self.update_timeout)
         self.timeout_slider.set(current_timeout)
         self.timeout_slider.pack(fill="x")
+
+        # --- Font Size Slider ---
+        ctk.CTkLabel(settings_win, text="Font Size", font=("Segoe UI", 12, "bold")).pack(pady=(10, 0))
+        self.font_size_label = ctk.CTkLabel(settings_win, text=f"Chat Font Size: {self.font_size}")
+        self.font_size_label.pack(pady=(0, 5))
+        self.font_size_slider = ctk.CTkSlider(settings_win, from_=8, to=24, number_of_steps=16, command=self.update_font_size)
+        self.font_size_slider.set(self.font_size)
+        self.font_size_slider.pack(fill="x", padx=10)
+
+
+    def update_font_size(self, value):
+        new_font_size = int(value)
+        self.font_size = new_font_size
+        self.font_size_label.configure(text=f"Chat Font Size: {new_font_size}")
+        # Apply the new font size to the output text widget
+        self.output_text.configure(font=(self.theme["font"][0], self.font_size))
 
     def update_timeout(self, value):
         new_timeout = int(value)
