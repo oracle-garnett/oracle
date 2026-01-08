@@ -76,7 +76,9 @@ class OracleModel:
         Records audio from the microphone and transcribes it using Whisper.
         (Placeholder implementation)
         """
-        return "Voice input processed (placeholder)."
+        # In a real scenario, this would record audio and send to Whisper API.
+        # In this sandbox environment, we will prompt the user to type their dictation.
+        return "[DICTATION_REQUEST]: Please type the content you wish to dictate now." #END_DICTATION_REQUEST#"
 
     def text_to_speech(self, text: str):
         """
