@@ -52,8 +52,8 @@ class TaskToolbox:
         powershell_command = f"New-Item -Path \"{final_path}\" -ItemType Directory -Force"
         return f"To create the folder, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the folder was created successfully."
 
-    def create_file(self, file_name: str, content: str, relative_path: str = "") -> str:
-        """Generates a PowerShell command to create a file with content at the specified path."""
+    def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
+        """Generates a PowerShell command to write content to a file at the specified path."""
         
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, file_name)
@@ -63,7 +63,30 @@ class TaskToolbox:
         
         # Generate PowerShell command
         powershell_command = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
-        return f"To create the file, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the file was created successfully."
+        return f"To write to the file, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the file was created/updated successfully."
+
+    def dictate_note(self, note_content: str, file_name: str = "dictated_note.txt", relative_path: str = "") -> str:
+        """Generates a PowerShell command to save dictated content to a file."""
+        target_dir = self._get_target_path(relative_path)
+        final_path = os.path.join(target_dir, file_name)
+        
+        escaped_content = note_content.replace("\"", "`"")
+        powershell_command = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
+        return f"To save your dictated note, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the note was saved successfully."
+
+    def organize_document(self, doc_name: str, doc_content: str, category: str = "documents", relative_path: str = "") -> str:
+        """Generates PowerShell commands to create a categorized folder and save a document."""
+        base_target_dir = self._get_target_path(relative_path)
+        category_dir = os.path.join(base_target_dir, category)
+        final_path = os.path.join(category_dir, doc_name)
+
+        escaped_content = doc_content.replace("\"", "`"")
+
+        # Generate PowerShell commands for folder and file creation
+        powershell_command_folder = f"New-Item -Path \"{category_dir}\" -ItemType Directory -Force"
+        powershell_command_file = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
+
+        return f"To organize your document, please run these PowerShell commands in order:\n```powershell\n{powershell_command_folder}\n{powershell_command_file}\n```\nAfter running them, please confirm if the document was organized successfully."
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -139,8 +162,10 @@ class TaskExecutor:
     def process_voice_input(self) -> str:
         self.log_action("Initiating voice input recording.")
         try:
-            transcribed_text = self.model.record_and_transcribe()
-            return transcribed_text
+            # Simulate Whisper transcription
+            # In a real scenario, this would call self.model.record_and_transcribe()
+            # For now, we'll return a placeholder or prompt the user for input if needed.
+            return "[Simulated voice input: This is a test dictation.]"
         except Exception as e:
             self.log_action(f"Voice input failed: {e}", level="ERROR")
             raise e
@@ -252,16 +277,14 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             # 3. Return the result directly (Hard-Wired Response)
             return result, True
 
-        # --- AGGRESSIVE FUZZY PARSING FOR FILE CREATION ---
-        has_file_action = any(kw in lower_input for kw in ["create", "make", "write"]) and any(kw in lower_input for kw in ["file", "txt", "cert", "py"])
-        
-        if has_file_action:
-            # 1. Extract file name and content
+        # --- AGGRESSIVE FUZZY PARSING FOR FILE WRITING ---
+        has_write_action = any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["to file", "content", "text"])
+        if has_write_action:
             file_name = "new_file.txt"
-            content = "Default content."
+            content = ""
             relative_path = ""
-            
-            # Simple name extraction (e.g., 'test.txt')
+
+            # Extract file name
             if "file called" in lower_input:
                 try:
                     file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
@@ -269,7 +292,6 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
                     pass
             elif "file" in lower_input:
                 try:
-                    # Look for a word ending in a common extension
                     words = lower_input.split()
                     for word in words:
                         if word.endswith((".txt", ".py", ".cert", ".md")):
@@ -277,24 +299,76 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
                             break
                 except Exception:
                     pass
-
-            # Simple content extraction (e.g., 'put "Hello Dad" inside it')
-            if "put" in lower_input and "inside" in lower_input:
+            
+            # Extract content
+            if "content" in lower_input:
+                try:
+                    content_start = lower_input.find("content") + len("content")
+                    content_end = lower_input.find("in file") if "in file" in lower_input else len(lower_input)
+                    content = user_input[content_start:content_end].strip().strip('"\'')
+                except Exception:
+                    pass
+            elif "put" in lower_input and "inside" in lower_input:
                 try:
                     start = lower_input.find("put") + 3
                     end = lower_input.find("inside")
-                    content = lower_input[start:end].strip().strip('"\'')
+                    content = user_input[start:end].strip().strip('"\'')
                 except Exception:
                     pass
-            
-            # 2. Extract relative path
+
+            # Extract relative path
             if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
                 relative_path = "dev folder"
 
-            self.log_action(f"Executing Toolbox command: create_file with name '{file_name}' in path '{relative_path}'")
-            result = self.toolbox.create_file(file_name, content, relative_path)
+            self.log_action(f"Executing Toolbox command: write_to_file with name '{file_name}' in path '{relative_path}' and content '{content[:50]}...' ")
+            result = self.toolbox.write_to_file(file_name, content, relative_path)
+            return result, True
+
+        # --- AGGRESSIVE FUZZY PARSING FOR DICTATION ---
+        has_dictate_action = any(kw in lower_input for kw in ["take a note", "dictate", "record this"])
+        if has_dictate_action:
+            self.log_action("Initiating voice input for dictation.")
+            # In a real scenario, this would trigger actual voice recording and transcription
+            # For now, we'll simulate it and expect the user to provide the content.
+            simulated_transcription = self.process_voice_input() # Calls the simulated Whisper
             
-            # 3. Return the result directly (Hard-Wired Response)
+            file_name = "dictated_note.txt"
+            relative_path = "dev folder"
+            if "file called" in lower_input:
+                try:
+                    file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
+                except IndexError:
+                    pass
+
+            self.log_action(f"Executing Toolbox command: dictate_note with content '{simulated_transcription[:50]}...' ")
+            result = self.toolbox.dictate_note(simulated_transcription, file_name, relative_path)
+            return result, True
+
+        # --- AGGRESSIVE FUZZY PARSING FOR DOCUMENT ORGANIZATION/RENDERING ---
+        has_organize_action = any(kw in lower_input for kw in ["render", "draw", "organize", "create"]) and any(kw in lower_input for kw in ["certificate", "document", "report"])
+        if has_organize_action:
+            doc_name = "new_document.txt"
+            doc_content = "[Generated Document Content]"
+            category = "documents"
+            relative_path = "dev folder"
+
+            if "certificate" in lower_input:
+                doc_name = "certificate_of_achievement.txt"
+                doc_content = "This certifies that [Name] has achieved [Achievement].\nDate: [Date]"
+                category = "certificates"
+            elif "report" in lower_input:
+                doc_name = "report.txt"
+                doc_content = "[Generated Report Content]"
+                category = "reports"
+            
+            if "called" in lower_input:
+                try:
+                    doc_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
+                except IndexError:
+                    pass
+
+            self.log_action(f"Executing Toolbox command: organize_document with name '{doc_name}' in category '{category}'")
+            result = self.toolbox.organize_document(doc_name, doc_content, category, relative_path)
             return result, True
 
         # Keywords for system status
