@@ -7,20 +7,9 @@ import time
 import random
 import shutil # Added for file organization
 
-# --- Placeholder Imports for Dependencies ---
-# These are needed to make the TaskExecutor class runnable in the user's environment
-class MemoryManager:
-    def retrieve_memory(self, query):
-        return ["User is building a local AI assistant named Oracle.", "Oracle uses llama3:8b-instruct-q2_K model."]
-    def store_interaction(self, user_input, response):
-        pass
-class AdminOverride:
-    def is_overridden(self):
-        return False
-class OracleVision:
-    def get_visual_context(self):
-        return {"extracted_text": "No screen capture available."}
-
+from memory.memory_manager import MemoryManager
+from safeguards.admin_override import AdminOverride
+from core.vision import OracleVision
 from models.oracle_model import OracleModel
 
 # --- Task Toolbox ---
@@ -31,7 +20,12 @@ class TaskToolbox:
     """
     def __init__(self):
         # Corrected base path based on user feedback: C:\dev is the root for the dev folder
-        self.base_path = "C:\\dev"
+        # For cross-platform compatibility, we use a local 'dev' folder in the project root if on Linux
+        if os.name == 'nt':
+            self.base_path = "C:\\dev"
+        else:
+            self.base_path = os.path.join(os.path.expanduser("~"), "oracle_dev")
+        
         # Ensure the base path exists for direct operations
         os.makedirs(self.base_path, exist_ok=True)
 

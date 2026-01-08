@@ -24,7 +24,11 @@ class OracleVision:
         
         # Note: User will need to install Tesseract-OCR on their machine
         # We will provide instructions for this.
-        self.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        if os.name == 'nt':
+            self.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        else:
+            self.tesseract_cmd = '/usr/bin/tesseract'
+            
         if os.path.exists(self.tesseract_cmd):
             pytesseract.pytesseract.tesseract_cmd = self.tesseract_cmd
 

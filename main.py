@@ -16,7 +16,7 @@ def initialize_oracle():
     resource_monitor = ResourceMonitor()
     
     # 2. Initialize Memory Manager
-    memory_manager = MemoryManager(secret_key="your-secure-user-key-here")
+    memory_manager = MemoryManager(secret_key="oracle-default-secret-key")
 
     # 3. Initialize Core Executor
     task_executor = TaskExecutor(memory_manager, admin_override)
