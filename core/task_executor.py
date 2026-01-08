@@ -32,8 +32,8 @@ class TaskToolbox:
         # Corrected base path based on user feedback: C:\dev is the root for the dev folder
         self.base_path = "C:\\dev"
 
-    def _get_target_path(self, relative_path: str, is_file: bool = False) -> str:
-        """Helper to determine the correct base directory."""
+    def _get_target_path(self, relative_path: str) -> str:
+        """Helper to determine the correct base directory for PowerShell commands."""
         if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
             return self.base_path
         elif "desktop" in relative_path.lower():
@@ -43,41 +43,27 @@ class TaskToolbox:
             return "C:\\Users\\emjim\\Desktop\\oracle"
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
-        """Creates a folder at the specified path. (Now using real os.makedirs)"""
+        """Generates a PowerShell command to create a folder at the specified path."""
         
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, folder_name)
         
-        try:
-            # --- REAL OS EXECUTION ---
-            os.makedirs(final_path, exist_ok=True)
-            
-            # Verification step: Check if the folder exists after creation
-            if os.path.exists(final_path):
-                 return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
-            else:
-                 return f"FAILURE: Folder creation failed, but no exception was raised. Path: {final_path}"
-        except Exception as e:
-            return f"FAILURE: Could not create folder at {final_path}. Windows Error: {e}"
+        # Generate PowerShell command
+        powershell_command = f"New-Item -Path \"{final_path}\" -ItemType Directory -Force"
+        return f"To create the folder, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the folder was created successfully."
 
     def create_file(self, file_name: str, content: str, relative_path: str = "") -> str:
-        """Creates a file with content at the specified path."""
+        """Generates a PowerShell command to create a file with content at the specified path."""
         
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, file_name)
         
-        try:
-            # --- REAL OS EXECUTION ---
-            with open(final_path, 'w') as f:
-                f.write(content)
-            
-            # Verification step
-            if os.path.exists(final_path):
-                return f"SUCCESS: File '{file_name}' created at {final_path} with content: '{content[:30]}...'"
-            else:
-                return f"FAILURE: File creation failed, but no exception was raised. Path: {final_path}"
-        except Exception as e:
-            return f"FAILURE: Could not create file at {final_path}. Windows Error: {e}"
+        # Escape content for PowerShell (single quotes for literal string)
+        escaped_content = content.replace("\"", "`"") # Escape double quotes
+        
+        # Generate PowerShell command
+        powershell_command = f"Set-Content -Path \"{final_path}\" -Value \"{escaped_content}\" -Force"
+        return f"To create the file, please run this PowerShell command:\n```powershell\n{powershell_command}\n```\nAfter running it, please confirm if the file was created successfully."
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -212,7 +198,7 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
 
             # 3. Store interaction and log
             self.memory_manager.store_interaction(user_input, response)
-            self.log_action(f"Task executed. Response: '{response[:50]}...'")
+            self.log_action(f"Task executed. Response: '{response[:50]}...' ")
             return response
 
         except Exception as e:
