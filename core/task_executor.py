@@ -32,17 +32,20 @@ class TaskToolbox:
         # Corrected base path based on user feedback: C:\dev is the root for the dev folder
         self.base_path = "C:\\dev"
 
+    def _get_target_path(self, relative_path: str, is_file: bool = False) -> str:
+        """Helper to determine the correct base directory."""
+        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
+            return self.base_path
+        elif "desktop" in relative_path.lower():
+            return "C:\\Users\\emjim\\Desktop"
+        else:
+            # Default to the project root for safety if no path is specified
+            return "C:\\Users\\emjim\\Desktop\\oracle"
+
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
         """Creates a folder at the specified path. (Now using real os.makedirs)"""
         
-        # Determine the target directory
-        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
-            # If user specifies "dev folder" or C:\dev, the target is the base path itself (C:\dev)
-            target_dir = self.base_path
-        else:
-            # Fallback to a safe location if no specific path is given (e.g., Desktop)
-            target_dir = "C:\\Users\\emjim\\Desktop"
-
+        target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, folder_name)
         
         try:
@@ -56,6 +59,25 @@ class TaskToolbox:
                  return f"FAILURE: Folder creation failed, but no exception was raised. Path: {final_path}"
         except Exception as e:
             return f"FAILURE: Could not create folder at {final_path}. Windows Error: {e}"
+
+    def create_file(self, file_name: str, content: str, relative_path: str = "") -> str:
+        """Creates a file with content at the specified path."""
+        
+        target_dir = self._get_target_path(relative_path)
+        final_path = os.path.join(target_dir, file_name)
+        
+        try:
+            # --- REAL OS EXECUTION ---
+            with open(final_path, 'w') as f:
+                f.write(content)
+            
+            # Verification step
+            if os.path.exists(final_path):
+                return f"SUCCESS: File '{file_name}' created at {final_path} with content: '{content[:30]}...'"
+            else:
+                return f"FAILURE: File creation failed, but no exception was raised. Path: {final_path}"
+        except Exception as e:
+            return f"FAILURE: Could not create file at {final_path}. Windows Error: {e}"
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -154,7 +176,7 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # 1. Check for Task Toolbox commands
+            # 1. --- DIRECT COMMAND INTERCEPT ---
             tool_result, tool_used = self._check_for_toolbox_command(user_input)
             if tool_used:
                 # If a tool was used, return the result directly, bypassing the LLM
@@ -213,12 +235,9 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
         lower_input = user_input.lower()
         
         # --- AGGRESSIVE FUZZY PARSING FOR FOLDER CREATION ---
-        # Look for the intent: (make/create/put) AND (folder/directory) AND (name/label)
-        has_action = any(kw in lower_input for kw in ["make", "create", "put"])
-        has_target = any(kw in lower_input for kw in ["folder", "directory"])
-        has_name_intent = any(kw in lower_input for kw in ["label", "called", "name"])
+        has_folder_action = any(kw in lower_input for kw in ["make", "create", "put"]) and any(kw in lower_input for kw in ["folder", "directory"])
         
-        if has_action and has_target:
+        if has_folder_action:
             # 1. Extract folder name
             folder_name = "new_folder"
             relative_path = ""
@@ -237,12 +256,57 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             elif "test" in lower_input:
                 folder_name = "test"
 
-            # 2. Extract relative path (e.g., "in my dev folder")
+            # 2. Extract relative path
             if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
                 relative_path = "dev folder"
 
             self.log_action(f"Executing Toolbox command: create_folder with name '{folder_name}' in path '{relative_path}'")
             result = self.toolbox.create_folder(folder_name, relative_path)
+            
+            # 3. Return the result directly (Hard-Wired Response)
+            return result, True
+
+        # --- AGGRESSIVE FUZZY PARSING FOR FILE CREATION ---
+        has_file_action = any(kw in lower_input for kw in ["create", "make", "write"]) and any(kw in lower_input for kw in ["file", "txt", "cert", "py"])
+        
+        if has_file_action:
+            # 1. Extract file name and content
+            file_name = "new_file.txt"
+            content = "Default content."
+            relative_path = ""
+            
+            # Simple name extraction (e.g., 'test.txt')
+            if "file called" in lower_input:
+                try:
+                    file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
+                except IndexError:
+                    pass
+            elif "file" in lower_input:
+                try:
+                    # Look for a word ending in a common extension
+                    words = lower_input.split()
+                    for word in words:
+                        if word.endswith((".txt", ".py", ".cert", ".md")):
+                            file_name = word.strip('.,')
+                            break
+                except Exception:
+                    pass
+
+            # Simple content extraction (e.g., 'put "Hello Dad" inside it')
+            if "put" in lower_input and "inside" in lower_input:
+                try:
+                    start = lower_input.find("put") + 3
+                    end = lower_input.find("inside")
+                    content = lower_input[start:end].strip().strip('"\'')
+                except Exception:
+                    pass
+            
+            # 2. Extract relative path
+            if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
+                relative_path = "dev folder"
+
+            self.log_action(f"Executing Toolbox command: create_file with name '{file_name}' in path '{relative_path}'")
+            result = self.toolbox.create_file(file_name, content, relative_path)
             
             # 3. Return the result directly (Hard-Wired Response)
             return result, True
