@@ -38,7 +38,6 @@ class TaskToolbox:
         elif "desktop" in rel_lower:
             return os.path.join(os.path.expanduser("~"), "Desktop")
         else:
-            # If it's a specific subfolder, join it with base_path
             return os.path.join(self.base_path, relative_path.strip("\\/"))
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
@@ -118,45 +117,44 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context:\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            # 2. System Prompt - Enforcing Reality and Tool Usage
-            system_prompt = """You are Oracle, a sophisticated local AI assistant. 
-You are NOT just a chatbot. You have 'Hands' (Python tools) that can affect the real world.
-When the user asks you to create a file, folder, or document, you MUST follow this protocol:
+            # 2. System Prompt - Aggressive Enforcement
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with physical 'Hands' (Python tools).
+You are currently running on the user's actual computer. 
+When a user asks you to create, save, write, or organize anything, you MUST use your tools.
 
-1. THINK: What content needs to be in the file? Generate the FULL content now.
-2. FORMAT: Your response MUST contain a JSON block if you want to use a tool.
-3. EXECUTE: I will parse your JSON and use your 'Hands' to do the work.
+ACTION PROTOCOL:
+1. If a task is requested, you MUST include a JSON block in your response.
+2. The JSON block MUST be inside triple backticks like this: ```json { ... } ```
+3. You MUST generate the ACTUAL content (e.g., the full text of a certificate) inside the JSON.
 
 Available Tools:
-- create_folder(folder_name, relative_path)
 - write_to_file(file_name, content, relative_path)
+- create_folder(folder_name, relative_path)
 
-JSON Format for Tools (MUST be in a code block):
+Example for a certificate:
 ```json
 {
   "tool": "write_to_file",
   "parameters": {
-    "file_name": "example.txt",
-    "content": "The actual generated content goes here...",
+    "file_name": "certificate.txt",
+    "content": "CERTIFICATE OF ACHIEVEMENT\nThis certifies that...",
     "relative_path": "dev folder"
   }
 }
 ```
 
-CRITICAL: If you do not include the JSON block, the file will NOT be created. 
-Do not say 'I have created the file' unless you have included the JSON block.
-Always generate the REAL content the user expects. If they ask for a certificate, write a full, professional certificate."""
+CRITICAL: Do not just say you will do it. If you don't provide the JSON, your hands won't move and the file won't exist. 
+If you are just talking, the user will see an empty folder. DO NOT LET THAT HAPPEN."""
 
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             
             # 3. Generate response from Brain
             response = self.model.infer(full_prompt)
 
-            # 4. Parse for Tool Usage (The "Hands")
-            # Look for JSON in code blocks first
+            # 4. Parse and Execute
             json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
             if not json_match:
-                # Fallback to any JSON-like structure
+                # Secondary check for raw JSON if she forgets backticks
                 json_match = re.search(r'(\{.*?\})', response, re.DOTALL)
 
             if json_match:
@@ -172,8 +170,12 @@ Always generate the REAL content the user expects. If they ask for a certificate
                         result = self.toolbox.write_to_file(**params)
                         response = f"{response}\n\n[MANIFESTATION LOG]: {result}"
                 except Exception as e:
-                    self.log_action(f"Tool parsing failed: {e}", level="ERROR")
-                    response = f"{response}\n\n[MANIFESTATION ERROR]: I tried to use my hands but failed to parse the command: {e}"
+                    response = f"{response}\n\n[MANIFESTATION ERROR]: Failed to parse tool command: {e}"
+            else:
+                # Safety check: If she mentions creating but no JSON was found
+                action_keywords = ["create", "save", "write", "make", "generate"]
+                if any(kw in response.lower() for kw in action_keywords) and any(kw in user_input.lower() for kw in action_keywords):
+                    response = f"{response}\n\n[SYSTEM WARNING]: You mentioned an action but did not provide a JSON command. No file was created. Please provide the JSON block to manifest this task."
 
             # 5. Store and return
             self.memory_manager.store_interaction(user_input, response)
