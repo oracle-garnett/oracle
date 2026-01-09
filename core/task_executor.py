@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import time
 import random
 import shutil
+import re
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -28,21 +29,26 @@ class TaskToolbox:
 
     def _get_target_path(self, relative_path: str) -> str:
         """Helper to determine the correct base directory for direct Python operations."""
-        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
+        if not relative_path:
             return self.base_path
-        elif "desktop" in relative_path.lower():
+            
+        rel_lower = relative_path.lower()
+        if "dev folder" in rel_lower or "c:\\dev" in rel_lower:
+            return self.base_path
+        elif "desktop" in rel_lower:
             return os.path.join(os.path.expanduser("~"), "Desktop")
         else:
-            return os.path.join(os.path.expanduser("~"), "Desktop", "oracle")
+            # If it's a specific subfolder, join it with base_path
+            return os.path.join(self.base_path, relative_path.strip("\\/"))
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, folder_name)
         try:
             os.makedirs(final_path, exist_ok=True)
-            return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
+            return f"SUCCESS: Folder '{folder_name}' manifested at {final_path}."
         except Exception as e:
-            return f"FAILURE: Could not create folder. Error: {e}"
+            return f"FAILURE: Could not manifest folder. Error: {e}"
 
     def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
         target_dir = self._get_target_path(relative_path)
@@ -51,9 +57,9 @@ class TaskToolbox:
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
             with open(final_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            return f"SUCCESS: File '{file_name}' created at {final_path} with actual content."
+            return f"SUCCESS: File '{file_name}' manifested at {final_path} with {len(content)} characters of data."
         except Exception as e:
-            return f"FAILURE: Could not create file. Error: {e}"
+            return f"FAILURE: Could not manifest file. Error: {e}"
 
     def check_system_status(self) -> str:
         return "SUCCESS: System status check complete. CPU: 45%, RAM: 60% (llama3 is running)."
@@ -125,7 +131,8 @@ Available Tools:
 - create_folder(folder_name, relative_path)
 - write_to_file(file_name, content, relative_path)
 
-JSON Format for Tools:
+JSON Format for Tools (MUST be in a code block):
+```json
 {
   "tool": "write_to_file",
   "parameters": {
@@ -134,8 +141,10 @@ JSON Format for Tools:
     "relative_path": "dev folder"
   }
 }
+```
 
-DO NOT pretend to have done it. If you don't include the JSON, it WON'T happen.
+CRITICAL: If you do not include the JSON block, the file will NOT be created. 
+Do not say 'I have created the file' unless you have included the JSON block.
 Always generate the REAL content the user expects. If they ask for a certificate, write a full, professional certificate."""
 
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
@@ -144,24 +153,27 @@ Always generate the REAL content the user expects. If they ask for a certificate
             response = self.model.infer(full_prompt)
 
             # 4. Parse for Tool Usage (The "Hands")
-            if "{" in response and "}" in response:
+            # Look for JSON in code blocks first
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+            if not json_match:
+                # Fallback to any JSON-like structure
+                json_match = re.search(r'(\{.*?\})', response, re.DOTALL)
+
+            if json_match:
                 try:
-                    # Extract JSON block
-                    start = response.find("{")
-                    end = response.rfind("}") + 1
-                    tool_data = json.loads(response[start:end])
-                    
+                    tool_data = json.loads(json_match.group(1))
                     tool_name = tool_data.get("tool")
                     params = tool_data.get("parameters", {})
                     
                     if tool_name == "create_folder":
                         result = self.toolbox.create_folder(**params)
-                        response = f"{response}\n\n[SYSTEM]: {result}"
+                        response = f"{response}\n\n[MANIFESTATION LOG]: {result}"
                     elif tool_name == "write_to_file":
                         result = self.toolbox.write_to_file(**params)
-                        response = f"{response}\n\n[SYSTEM]: {result}"
+                        response = f"{response}\n\n[MANIFESTATION LOG]: {result}"
                 except Exception as e:
                     self.log_action(f"Tool parsing failed: {e}", level="ERROR")
+                    response = f"{response}\n\n[MANIFESTATION ERROR]: I tried to use my hands but failed to parse the command: {e}"
 
             # 5. Store and return
             self.memory_manager.store_interaction(user_input, response)
