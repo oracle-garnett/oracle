@@ -6,7 +6,6 @@ from typing import Any, Dict, List
 import time
 import random
 import shutil
-import re
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -29,25 +28,21 @@ class TaskToolbox:
 
     def _get_target_path(self, relative_path: str) -> str:
         """Helper to determine the correct base directory for direct Python operations."""
-        if not relative_path:
+        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
             return self.base_path
-            
-        rel_lower = relative_path.lower()
-        if "dev folder" in rel_lower or "c:\\dev" in rel_lower:
-            return self.base_path
-        elif "desktop" in rel_lower:
+        elif "desktop" in relative_path.lower():
             return os.path.join(os.path.expanduser("~"), "Desktop")
         else:
-            return os.path.join(self.base_path, relative_path.strip("\\/"))
+            return os.path.join(os.path.expanduser("~"), "Desktop", "oracle")
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
         target_dir = self._get_target_path(relative_path)
         final_path = os.path.join(target_dir, folder_name)
         try:
             os.makedirs(final_path, exist_ok=True)
-            return f"SUCCESS: Folder '{folder_name}' manifested at {final_path}."
+            return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
         except Exception as e:
-            return f"FAILURE: Could not manifest folder. Error: {e}"
+            return f"FAILURE: Could not create folder. Error: {e}"
 
     def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
         target_dir = self._get_target_path(relative_path)
@@ -56,9 +51,32 @@ class TaskToolbox:
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
             with open(final_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            return f"SUCCESS: File '{file_name}' manifested at {final_path} with {len(content)} characters of data."
+            return f"SUCCESS: File '{file_name}' created at {final_path}."
         except Exception as e:
-            return f"FAILURE: Could not manifest file. Error: {e}"
+            return f"FAILURE: Could not create file. Error: {e}"
+
+    def dictate_note(self, note_content: str, file_name: str = "dictated_note.txt", relative_path: str = "") -> str:
+        target_dir = self._get_target_path(relative_path)
+        final_path = os.path.join(target_dir, file_name)
+        try:
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(note_content)
+            return f"SUCCESS: Dictated note saved to '{file_name}' at {final_path}."
+        except Exception as e:
+            return f"FAILURE: Could not save dictated note. Error: {e}"
+
+    def organize_document(self, doc_name: str, doc_content: str, category: str = "documents", relative_path: str = "") -> str:
+        base_target_dir = self._get_target_path(relative_path)
+        category_dir = os.path.join(base_target_dir, category)
+        final_path = os.path.join(category_dir, doc_name)
+        try:
+            os.makedirs(category_dir, exist_ok=True)
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(doc_content)
+            return f"SUCCESS: Document '{doc_name}' organized into '{category}' at {final_path}."
+        except Exception as e:
+            return f"FAILURE: Could not organize document. Error: {e}"
 
     def check_system_status(self) -> str:
         return "SUCCESS: System status check complete. CPU: 45%, RAM: 60% (llama3 is running)."
@@ -108,7 +126,12 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # 1. Retrieve context
+            # 1. --- DIRECT COMMAND INTERCEPT (Fuzzy Parsing) ---
+            tool_result, tool_used = self._check_for_toolbox_command(user_input)
+            if tool_used:
+                return tool_result
+
+            # 2. LLM Inference
             memories = self.memory_manager.retrieve_memory(user_input)
             context = "\n".join(memories) if memories else "No relevant past memories found."
             
@@ -117,72 +140,56 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context:\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            # 2. System Prompt - Aggressive Enforcement
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with physical 'Hands' (Python tools).
-You are currently running on the user's actual computer. 
-When a user asks you to create, save, write, or organize anything, you MUST use your tools.
-
-ACTION PROTOCOL:
-1. If a task is requested, you MUST include a JSON block in your response.
-2. The JSON block MUST be inside triple backticks like this: ```json { ... } ```
-3. You MUST generate the ACTUAL content (e.g., the full text of a certificate) inside the JSON.
-
-Available Tools:
-- write_to_file(file_name, content, relative_path)
-- create_folder(folder_name, relative_path)
-
-Example for a certificate:
-```json
-{
-  "tool": "write_to_file",
-  "parameters": {
-    "file_name": "certificate.txt",
-    "content": "CERTIFICATE OF ACHIEVEMENT\nThis certifies that...",
-    "relative_path": "dev folder"
-  }
-}
-```
-
-CRITICAL: Do not just say you will do it. If you don't provide the JSON, your hands won't move and the file won't exist. 
-If you are just talking, the user will see an empty folder. DO NOT LET THAT HAPPEN."""
-
-            full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
+Your primary function is to execute tasks for the user. 
+If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
+DO NOT just provide instructions on how to do it. EXECUTE the task."""
             
-            # 3. Generate response from Brain
+            full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
-            # 4. Parse and Execute
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-            if not json_match:
-                # Secondary check for raw JSON if she forgets backticks
-                json_match = re.search(r'(\{.*?\})', response, re.DOTALL)
-
-            if json_match:
-                try:
-                    tool_data = json.loads(json_match.group(1))
-                    tool_name = tool_data.get("tool")
-                    params = tool_data.get("parameters", {})
-                    
-                    if tool_name == "create_folder":
-                        result = self.toolbox.create_folder(**params)
-                        response = f"{response}\n\n[MANIFESTATION LOG]: {result}"
-                    elif tool_name == "write_to_file":
-                        result = self.toolbox.write_to_file(**params)
-                        response = f"{response}\n\n[MANIFESTATION LOG]: {result}"
-                except Exception as e:
-                    response = f"{response}\n\n[MANIFESTATION ERROR]: Failed to parse tool command: {e}"
-            else:
-                # Safety check: If she mentions creating but no JSON was found
-                action_keywords = ["create", "save", "write", "make", "generate"]
-                if any(kw in response.lower() for kw in action_keywords) and any(kw in user_input.lower() for kw in action_keywords):
-                    response = f"{response}\n\n[SYSTEM WARNING]: You mentioned an action but did not provide a JSON command. No file was created. Please provide the JSON block to manifest this task."
-
-            # 5. Store and return
             self.memory_manager.store_interaction(user_input, response)
             return response
 
         except Exception as e:
             return f"Error: {str(e)}"
+
+    def _check_for_toolbox_command(self, user_input: str) -> (str | None, bool):
+        lower_input = user_input.lower()
+        
+        # Folder Creation
+        if any(kw in lower_input for kw in ["make", "create", "put"]) and any(kw in lower_input for kw in ["folder", "directory"]):
+            folder_name = "new_folder"
+            if "label it" in lower_input:
+                folder_name = lower_input.split("label it")[1].strip().split()[0].strip('.,')
+            elif "called" in lower_input:
+                folder_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
+            
+            relative_path = "dev folder" if "dev folder" in lower_input else ""
+            return self.toolbox.create_folder(folder_name, relative_path), True
+
+        # File Writing
+        if any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["file", "content", "text"]):
+            file_name = "new_file.txt"
+            content = "Generated by Oracle."
+            
+            if "file called" in lower_input:
+                file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
+            
+            # Simple content extraction
+            if "put" in lower_input and "inside" in lower_input:
+                start = lower_input.find("put") + 3
+                end = lower_input.find("inside")
+                content = user_input[start:end].strip().strip('"\'')
+            
+            relative_path = "dev folder" if "dev folder" in lower_input else ""
+            return self.toolbox.write_to_file(file_name, content, relative_path), True
+
+        # System Status
+        if "check system" in lower_input or "system status" in lower_input:
+            return self.toolbox.check_system_status(), True
+
+        return None, False
 
     def process_visual_input(self) -> dict:
         self.current_visual_context = self.vision.get_visual_context()
