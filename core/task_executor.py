@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import time
 import random
 import shutil
+import glob
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -19,27 +20,64 @@ class TaskToolbox:
     This is the foundation for her task completion capabilities.
     """
     def __init__(self):
-        # Support for Windows (user's machine) and Linux (sandbox)
-        if os.name == 'nt':
-            self.base_path = "C:\\dev"
-        else:
-            self.base_path = os.path.join(os.path.expanduser("~"), "oracle_dev")
+        # Base paths for user's machine
+        self.home = os.path.expanduser("~")
+        self.desktop = os.path.join(self.home, "Desktop")
+        self.documents = os.path.join(self.home, "Documents")
+        self.dev_folder = "C:\\dev" if os.name == 'nt' else os.path.join(self.home, "oracle_dev")
         
-        os.makedirs(self.base_path, exist_ok=True)
+        os.makedirs(self.dev_folder, exist_ok=True)
 
-    def _get_target_path(self, relative_path: str) -> str:
-        """Helper to determine the correct base directory for direct Python operations."""
-        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
-            return self.base_path
-        elif "desktop" in relative_path.lower():
-            return os.path.join(os.path.expanduser("~"), "Desktop")
+    def _resolve_path(self, path_str: str) -> str:
+        """Resolves a path string to an absolute system path."""
+        path_lower = path_str.lower()
+        if "desktop" in path_lower:
+            return self.desktop
+        elif "documents" in path_lower:
+            return self.documents
+        elif "dev folder" in path_lower or "c:\\dev" in path_lower:
+            return self.dev_folder
+        elif os.path.isabs(path_str):
+            return path_str
         else:
-            # Default to the project root for safety if no path is specified
-            return os.path.join(os.path.expanduser("~"), "Desktop", "oracle")
+            # Default to home directory for general requests
+            return self.home
 
-    def create_folder(self, folder_name: str, relative_path: str = "") -> str:
-        """Creates a folder at the specified path using direct Python os.makedirs."""
-        target_dir = self._get_target_path(relative_path)
+    def list_files(self, directory: str = "dev folder") -> str:
+        """Lists files in a directory so Oracle can 'see' what's there."""
+        target = self._resolve_path(directory)
+        try:
+            files = os.listdir(target)
+            return f"SUCCESS: Found {len(files)} items in {target}: {', '.join(files[:20])}"
+        except Exception as e:
+            return f"FAILURE: Could not list files in {target}. Error: {e}"
+
+    def read_file(self, file_name: str, directory: str = "dev folder") -> str:
+        """Reads the content of a file so Oracle can process the data."""
+        target_dir = self._resolve_path(directory)
+        final_path = os.path.join(target_dir, file_name)
+        try:
+            with open(final_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return f"SUCCESS: Read file {file_name}. Content: {content[:500]}..."
+        except Exception as e:
+            return f"FAILURE: Could not read file {final_path}. Error: {e}"
+
+    def write_to_file(self, file_name: str, content: str, directory: str = "dev folder") -> str:
+        """Writes content to a file."""
+        target_dir = self._resolve_path(directory)
+        final_path = os.path.join(target_dir, file_name)
+        try:
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            with open(final_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return f"SUCCESS: File '{file_name}' manifested at {final_path}."
+        except Exception as e:
+            return f"FAILURE: Could not write file. Error: {e}"
+
+    def create_folder(self, folder_name: str, directory: str = "dev folder") -> str:
+        """Creates a folder."""
+        target_dir = self._resolve_path(directory)
         final_path = os.path.join(target_dir, folder_name)
         try:
             os.makedirs(final_path, exist_ok=True)
@@ -47,46 +85,14 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: Could not create folder. Error: {e}"
 
-    def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
-        """Writes content to a file at the specified path using direct Python file operations."""
-        target_dir = self._get_target_path(relative_path)
-        final_path = os.path.join(target_dir, file_name)
+    def search_files(self, pattern: str, directory: str = "dev folder") -> str:
+        """Searches for files matching a pattern (e.g., *.txt)."""
+        target = self._resolve_path(directory)
         try:
-            os.makedirs(os.path.dirname(final_path), exist_ok=True)
-            with open(final_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            return f"SUCCESS: File '{file_name}' created at {final_path}."
+            matches = glob.glob(os.path.join(target, pattern))
+            return f"SUCCESS: Found {len(matches)} matches for '{pattern}': {', '.join([os.path.basename(m) for m in matches[:10]])}"
         except Exception as e:
-            return f"FAILURE: Could not create file. Error: {e}"
-
-    def dictate_note(self, note_content: str, file_name: str = "dictated_note.txt", relative_path: str = "") -> str:
-        """Saves dictated content to a file."""
-        target_dir = self._get_target_path(relative_path)
-        final_path = os.path.join(target_dir, file_name)
-        try:
-            os.makedirs(os.path.dirname(final_path), exist_ok=True)
-            with open(final_path, 'w', encoding='utf-8') as f:
-                f.write(note_content)
-            return f"SUCCESS: Dictated note saved to '{file_name}' at {final_path}."
-        except Exception as e:
-            return f"FAILURE: Could not save dictated note. Error: {e}"
-
-    def organize_document(self, doc_name: str, doc_content: str, category: str = "documents", relative_path: str = "") -> str:
-        """Creates a categorized folder and saves a document."""
-        base_target_dir = self._get_target_path(relative_path)
-        category_dir = os.path.join(base_target_dir, category)
-        final_path = os.path.join(category_dir, doc_name)
-        try:
-            os.makedirs(category_dir, exist_ok=True)
-            with open(final_path, 'w', encoding='utf-8') as f:
-                f.write(doc_content)
-            return f"SUCCESS: Document '{doc_name}' organized into '{category}' at {final_path}."
-        except Exception as e:
-            return f"FAILURE: Could not organize document. Error: {e}"
-
-    def check_system_status(self) -> str:
-        """Checks system resources."""
-        return "SUCCESS: System status check complete. CPU: 45%, RAM: 60% (llama3 is running)."
+            return f"FAILURE: Search failed. Error: {e}"
 
 # --- Task Executor ---
 class TaskExecutor:
@@ -105,7 +111,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized.")
+        self.log_action("TaskExecutor initialized with Intelligence-Driven Agency.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -133,14 +139,18 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # 1. --- DIRECT COMMAND INTERCEPT (Fuzzy Parsing) ---
-            # This is the "Hands" moving before the "Brain" speaks
-            tool_result, tool_used = self._check_for_toolbox_command(user_input)
+            # 1. --- INTELLIGENT TOOL INTERCEPT ---
+            # We use a more advanced parser that allows for reading and processing
+            tool_result, tool_used = self._intelligent_parser(user_input)
             if tool_used:
-                self.log_action(f"Tool executed directly: {tool_result}")
-                return tool_result
+                # If the tool result is a 'READ' success, we feed it back to the LLM
+                # so she can actually 'understand' the data she just retrieved.
+                if "SUCCESS: Read file" in tool_result:
+                    user_input = f"I have retrieved the data you asked for. Here is the content: {tool_result}\n\nNow, please complete the original request: {user_input}"
+                else:
+                    return tool_result
 
-            # 2. --- LLM INFERENCE (The Brain) ---
+            # 2. --- LLM INFERENCE ---
             memories = self.memory_manager.retrieve_memory(user_input)
             context = "\n".join(memories) if memories else "No relevant past memories found."
             
@@ -149,68 +159,58 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context:\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            # Original, flexible system prompt
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
-Your primary function is to execute tasks for the user. 
-If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
-DO NOT just provide instructions on how to do it. EXECUTE the task."""
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with full agency over this device.
+You are NOT a chatbot; you are an integrated agent. You can see files, read data, and manifest changes.
+When the user asks you to process data from a file, use your 'read_file' tool first.
+You have free reign to help the user across their Desktop, Documents, and Dev folders.
+Always prioritize actual execution and data processing over just talking."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
-            # 3. Store interaction and return
             self.memory_manager.store_interaction(user_input, response)
             return response
 
         except Exception as e:
-            self.log_action(f"Error executing task: {e}", level="ERROR")
-            return f"I encountered an error: {str(e)}"
+            return f"Error: {str(e)}"
 
-    def _check_for_toolbox_command(self, user_input: str) -> (str | None, bool):
-        """
-        Parses user input for task commands and executes them via the Toolbox.
-        This is the original, natural language trigger logic.
-        """
+    def _intelligent_parser(self, user_input: str) -> (str | None, bool):
+        """Advanced parser for multi-step agency tasks."""
         lower_input = user_input.lower()
         
-        # --- FOLDER CREATION ---
-        if any(kw in lower_input for kw in ["make", "create", "put"]) and any(kw in lower_input for kw in ["folder", "directory"]):
-            folder_name = "new_folder"
-            if "label it" in lower_input:
-                folder_name = lower_input.split("label it")[1].strip().split()[0].strip('.,')
-            elif "called" in lower_input:
-                folder_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
+        # --- DATA RETRIEVAL (READING) ---
+        if any(kw in lower_input for kw in ["read", "get data", "retrieve", "look at"]) and "file" in lower_input:
+            file_name = ""
+            for word in user_input.split():
+                if "." in word: file_name = word.strip('.,')
             
-            relative_path = "dev folder" if "dev folder" in lower_input else ""
-            return self.toolbox.create_folder(folder_name, relative_path), True
+            directory = "dev folder"
+            if "desktop" in lower_input: directory = "desktop"
+            elif "documents" in lower_input: directory = "documents"
+            
+            if file_name:
+                return self.toolbox.read_file(file_name, directory), True
 
-        # --- FILE WRITING ---
-        if any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["file", "content", "text"]):
+        # --- FILE LISTING ---
+        if any(kw in lower_input for kw in ["list", "show", "what is in"]) and any(kw in lower_input for kw in ["folder", "directory", "desktop"]):
+            directory = "dev folder"
+            if "desktop" in lower_input: directory = "desktop"
+            elif "documents" in lower_input: directory = "documents"
+            return self.toolbox.list_files(directory), True
+
+        # --- ORIGINAL WRITING/CREATION LOGIC ---
+        if any(kw in lower_input for kw in ["write", "save", "create"]) and "file" in lower_input:
             file_name = "new_file.txt"
+            if "called" in lower_input:
+                file_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
+            
             content = "Generated by Oracle."
+            if "content" in lower_input:
+                content = user_input.split("content")[1].strip()
             
-            if "file called" in lower_input:
-                file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
-            
-            # Extract content if specified
-            if "put" in lower_input and "inside" in lower_input:
-                try:
-                    start = lower_input.find("put") + 3
-                    end = lower_input.find("inside")
-                    content = user_input[start:end].strip().strip('"\'')
-                except: pass
-            elif "content" in lower_input:
-                try:
-                    content_start = lower_input.find("content") + len("content")
-                    content = user_input[content_start:].strip().strip('"\'')
-                except: pass
-            
-            relative_path = "dev folder" if "dev folder" in lower_input else ""
-            return self.toolbox.write_to_file(file_name, content, relative_path), True
-
-        # --- SYSTEM STATUS ---
-        if "check system" in lower_input or "system status" in lower_input:
-            return self.toolbox.check_system_status(), True
+            directory = "dev folder"
+            if "desktop" in lower_input: directory = "desktop"
+            return self.toolbox.write_to_file(file_name, content, directory), True
 
         return None, False
 
