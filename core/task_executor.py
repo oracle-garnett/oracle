@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import time
 import random
 import shutil # Added for file organization and deletion
+import re # For more robust name extraction
 
 # --- Placeholder Imports for Dependencies ---
 # These are needed to make the TaskExecutor class runnable in the user's environment
@@ -35,21 +36,28 @@ class TaskToolbox:
         # Ensure the base path exists for direct operations
         os.makedirs(self.base_path, exist_ok=True)
 
-    def _get_target_path(self, relative_path: str) -> str:
-        """Helper to determine the correct base directory for direct Python operations."""
-        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower():
-            return self.base_path
-        elif "desktop" in relative_path.lower():
-            return os.path.join(os.path.expanduser("~"), "Desktop") # Use os.path.expanduser for cross-platform Desktop
-        else:
-            # Default to the project root for safety if no path is specified
-            return os.path.join(os.path.expanduser("~"), "Desktop", "oracle")
+    def _resolve_path(self, item_name: str, relative_path: str = "") -> str:
+        """Helper to resolve an item name to a full absolute path, prioritizing C:\dev."""
+        if os.path.isabs(item_name): # If it's already an absolute path
+            return item_name
+
+        # Prioritize C:\dev if specified or implied
+        if "dev folder" in relative_path.lower() or "c:\\dev" in relative_path.lower() or not relative_path:
+            potential_path = os.path.join(self.base_path, item_name)
+            if os.path.exists(potential_path) or not os.path.dirname(item_name): # If it exists or is just a name
+                return potential_path
+        
+        # Fallback to other common paths if needed (e.g., Desktop, project root)
+        if "desktop" in relative_path.lower():
+            return os.path.join(os.path.expanduser("~"), "Desktop", item_name)
+        
+        # Default to C:\dev if no other clear path is given and it's not an absolute path
+        return os.path.join(self.base_path, item_name)
 
     def create_folder(self, folder_name: str, relative_path: str = "") -> str:
         """Creates a folder at the specified path using direct Python os.makedirs."""
         
-        target_dir = self._get_target_path(relative_path)
-        final_path = os.path.join(target_dir, folder_name)
+        final_path = self._resolve_path(folder_name, relative_path)
         
         try:
             os.makedirs(final_path, exist_ok=True)
@@ -63,8 +71,7 @@ class TaskToolbox:
     def write_to_file(self, file_name: str, content: str, relative_path: str = "") -> str:
         """Writes content to a file at the specified path using direct Python file operations."""
         
-        target_dir = self._get_target_path(relative_path)
-        final_path = os.path.join(target_dir, file_name)
+        final_path = self._resolve_path(file_name, relative_path)
         
         try:
             os.makedirs(os.path.dirname(final_path), exist_ok=True) # Ensure parent directory exists
@@ -80,8 +87,7 @@ class TaskToolbox:
 
     def dictate_note(self, note_content: str, file_name: str = "dictated_note.txt", relative_path: str = "") -> str:
         """Saves dictated content to a file using direct Python file operations."""
-        target_dir = self._get_target_path(relative_path)
-        final_path = os.path.join(target_dir, file_name)
+        final_path = self._resolve_path(file_name, relative_path)
         
         try:
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
@@ -97,7 +103,7 @@ class TaskToolbox:
 
     def organize_document(self, doc_name: str, doc_content: str, category: str = "documents", relative_path: str = "") -> str:
         """Creates a categorized folder and saves a document using direct Python operations."""
-        base_target_dir = self._get_target_path(relative_path)
+        base_target_dir = self._resolve_path("", relative_path) # Resolve base path for category
         category_dir = os.path.join(base_target_dir, category)
         final_path = os.path.join(category_dir, doc_name)
 
@@ -113,25 +119,38 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: Could not organize document at {final_path}. System Error: {e}"
 
-    def delete_item(self, item_path: str) -> str:
+    def delete_item(self, item_name: str, relative_path: str = "") -> str:
         """Deletes a file or an empty folder at the specified path using direct Python operations."""
+        final_path = self._resolve_path(item_name, relative_path)
+
+        if not os.path.exists(final_path):
+            return f"FAILURE: Item at \'{final_path}\' does not exist. Cannot delete."
+
         try:
-            if os.path.isfile(item_path):
-                os.remove(item_path)
-                return f"SUCCESS: File \'{item_path}\' deleted."
-            elif os.path.isdir(item_path):
-                # Only remove if directory is empty, or use rmtree for non-empty
-                if not os.listdir(item_path): # Check if directory is empty
-                    os.rmdir(item_path)
-                    return f"SUCCESS: Empty folder \'{item_path}\' deleted."
-                else:
-                    # For non-empty directories, use shutil.rmtree
-                    shutil.rmtree(item_path)
-                    return f"SUCCESS: Folder \'{item_path}\' and its contents deleted."
+            if os.path.isfile(final_path):
+                os.remove(final_path)
+                return f"SUCCESS: File \'{final_path}\' deleted."
+            elif os.path.isdir(final_path):
+                # For non-empty directories, use shutil.rmtree
+                shutil.rmtree(final_path)
+                return f"SUCCESS: Folder \'{final_path}\' and its contents deleted."
             else:
-                return f"FAILURE: Item at \'{item_path}\' does not exist or is not a file/folder."
+                return f"FAILURE: Item at \'{final_path}\' is not a file or folder. Cannot delete."
         except Exception as e:
-            return f"FAILURE: Could not delete item at \'{item_path}\'. System Error: {e}"
+            return f"FAILURE: Could not delete item at \'{final_path}\' due to System Error: {e}"
+
+    def clean_empty_folders(self, target_path: str = "") -> str:
+        """Deletes all empty subfolders within a given target path."""
+        base_dir = self._resolve_path("", target_path)
+        deleted_count = 0
+        try:
+            for dirpath, dirnames, filenames in os.walk(base_dir, topdown=False):
+                if not dirnames and not filenames:
+                    os.rmdir(dirpath)
+                    deleted_count += 1
+            return f"SUCCESS: Deleted {deleted_count} empty folders in \'{base_dir}\"."
+        except Exception as e:
+            return f"FAILURE: Could not clean empty folders in \'{base_dir}\' due to System Error: {e}"
 
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
@@ -245,13 +264,10 @@ class TaskExecutor:
                     self.pending_deletion_path = None # Clear pending state
                     return "Deletion cancelled by user."
 
-            # 1. --- DIRECT COMMAND INTERCEPT (Function Calling Style) ---
-            # This is where we'll implement a more robust function calling mechanism
-            # For now, we'll keep the fuzzy parsing but add deletion
-            tool_result, tool_used = self._check_for_toolbox_command(user_input)
-            if tool_used:
-                # If a tool was used, return the result directly, bypassing the LLM
-                return tool_result
+            # --- FUNCTION CALLING / TOOL DISPATCH ---
+            tool_response = self._dispatch_tool_call(user_input)
+            if tool_response:
+                return tool_response
 
             # 2. If no tool was used, proceed to LLM inference
             
@@ -300,172 +316,109 @@ If the user asks to delete something, you MUST ask for confirmation before proce
             repair_suggestion = self.model.self_repair(traceback.format_exc())
             return f"I encountered an internal error: {str(e)}. My self-healing protocol suggests: {repair_suggestion}"
 
-    def _check_for_toolbox_command(self, user_input: str) -> (str | None, bool):
+    def _extract_item_name(self, user_input: str, keywords: List[str]) -> str:
+        """Helper to extract item name from user input more intelligently."""
+        lower_input = user_input.lower()
+        for kw in keywords:
+            if kw in lower_input:
+                # Try to get the word after the keyword, or a quoted string
+                match = re.search(rf'{kw}\s+(?:called\s+)?["\‘’]([^"]+)["\‘’]', lower_input) # Quoted string
+                if match: return match.group(1)
+                match = re.search(rf'{kw}\s+(?:named\s+)?([a-zA-Z0-9_.-]+)', lower_input) # Single word after keyword
+                if match: return match.group(1)
+        
+        # Fallback: try to find a path-like string or a common file/folder name
+        path_match = re.search(r'([a-zA-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*)|([a-zA-Z0-9_.-]+\.(?:txt|py|cert|md|html))|([a-zA-Z0-9_.-]+)', user_input)
+        if path_match: return path_match.group(0).strip()
+        
+        return ""
+
+    def _dispatch_tool_call(self, user_input: str) -> str | None:
         """
-        Parses user input for task commands and executes them via the Toolbox.
-        Returns the result and a boolean indicating if a tool was used.
+        Dispatches tool calls based on user input using a more robust function calling approach.
+        Returns the tool's result if a tool was called, otherwise None.
         """
         lower_input = user_input.lower()
-        
-        # --- AGGRESSIVE FUZZY PARSING FOR FOLDER CREATION ---
-        has_folder_action = any(kw in lower_input for kw in ["make", "create", "put"]) and any(kw in lower_input for kw in ["folder", "directory"])
-        
-        if has_folder_action:
-            # 1. Extract folder name
-            folder_name = "new_folder"
-            relative_path = ""
+
+        # --- Tool: create_folder ---
+        if any(kw in lower_input for kw in ["make", "create", "put"]) and any(kw in lower_input for kw in ["folder", "directory"]):
+            folder_name = self._extract_item_name(user_input, ["folder", "directory", "called", "label it"])
+            if not folder_name: folder_name = "new_folder"
+            relative_path = "dev folder" if "dev folder" in lower_input or "c:\\dev" in lower_input else ""
+            self.log_action(f"Dispatching create_folder: name='{folder_name}', path='{relative_path}'")
+            return self.toolbox.create_folder(folder_name, relative_path)
+
+        # --- Tool: write_to_file ---
+        if any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["file", "content", "text"]):
+            file_name = self._extract_item_name(user_input, ["file", "called", "named"])
+            if not file_name: file_name = "new_file.txt"
             
-            # Try to extract the name after "label it" or "called"
-            if "label it" in lower_input:
-                 try:
-                    folder_name = lower_input.split("label it")[1].strip().split()[0].strip('.,')
-                 except IndexError:
-                    pass
-            elif "called" in lower_input:
-                try:
-                    folder_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
-                except IndexError:
-                    pass
-            elif "test" in lower_input:
-                folder_name = "test"
+            content_match = re.search(r'(?:put|write)\s+["\‘’]([^"‘’]+)["\‘’](?:\s+inside it)?', user_input, re.IGNORECASE)
+            content = content_match.group(1) if content_match else "[No content provided]"
 
-            # 2. Extract relative path
-            if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
-                relative_path = "dev folder"
+            relative_path = "dev folder" if "dev folder" in lower_input or "c:\\dev" in lower_input else ""
+            self.log_action(f"Dispatching write_to_file: name='{file_name}', content='{content[:50]}...', path='{relative_path}'")
+            return self.toolbox.write_to_file(file_name, content, relative_path)
 
-            self.log_action(f"Executing Toolbox command: create_folder with name '{folder_name}' in path '{relative_path}'")
-            result = self.toolbox.create_folder(folder_name, relative_path)
+        # --- Tool: dictate_note ---
+        if any(kw in lower_input for kw in ["take a note", "dictate", "record this"]):
+            self.log_action("Dispatching dictate_note: requesting user input for dictation.")
+            # Simulate dictation request, then save it
+            dictated_content = self.process_voice_input() # This will return the prompt for user to type
+            if "[DICTATION_REQUEST]" in dictated_content: # If it's the prompt, we need to wait for user input
+                # This is a tricky part for direct execution. For now, we'll return the prompt
+                # and expect the next user input to be the dictated content.
+                # A more advanced system would use a state machine or a dedicated UI element.
+                return dictated_content
             
-            # 3. Return the result directly (Hard-Wired Response)
-            return result, True
+            file_name = self._extract_item_name(user_input, ["file", "called", "named"])
+            if not file_name: file_name = "dictated_note.txt"
+            relative_path = "dev folder" if "dev folder" in lower_input or "c:\\dev" in lower_input else ""
+            self.log_action(f"Dispatching dictate_note: saving '{dictated_content[:50]}...' to '{file_name}'")
+            return self.toolbox.dictate_note(dictated_content, file_name, relative_path)
 
-        # --- AGGRESSIVE FUZZY PARSING FOR FILE WRITING ---
-        has_write_action = any(kw in lower_input for kw in ["write", "put", "save"]) and any(kw in lower_input for kw in ["to file", "content", "text", "file"])
-        if has_write_action:
-            file_name = "new_file.txt"
-            content = ""
-            relative_path = ""
-
-            # Extract file name
-            if "file called" in lower_input:
-                try:
-                    file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
-                except IndexError:
-                    pass
-            elif "file" in lower_input:
-                try:
-                    # Look for a word ending in a common extension
-                    words = lower_input.split()
-                    for word in words:
-                        if word.endswith((".txt", ".py", ".cert", ".md")):
-                            file_name = word.strip('.,')
-                            break
-                except Exception:
-                    pass
-
-            # Simple content extraction (e.g., 'put "Hello Dad" inside it')
-            if "put" in lower_input and "inside" in lower_input:
-                try:
-                    start = lower_input.find("put") + 3
-                    end = lower_input.find("inside")
-                    content = user_input[start:end].strip().strip('"\'')
-                except Exception:
-                    pass
-            elif "content" in lower_input:
-                try:
-                    content_start = lower_input.find("content") + len("content")
-                    content_end = lower_input.find("in file") if "in file" in lower_input else len(lower_input)
-                    content = user_input[content_start:content_end].strip().strip('"\'')
-                except Exception:
-                    pass
+        # --- Tool: organize_document (for certificates/reports) ---
+        if any(kw in lower_input for kw in ["render", "draw", "organize", "create"]) and any(kw in lower_input for kw in ["certificate", "document", "report"]):
+            doc_name = self._extract_item_name(user_input, ["certificate", "document", "report", "called", "named"])
+            if not doc_name: doc_name = "new_document.txt"
             
-            # 2. Extract relative path
-            if "in my dev folder" in lower_input or "in dev folder" in lower_input or "c:\\dev" in lower_input:
-                relative_path = "dev folder"
-
-            self.log_action(f"Executing Toolbox command: write_to_file with name '{file_name}' in path '{relative_path}' and content '{content[:50]}...' ")
-            result = self.toolbox.write_to_file(file_name, content, relative_path)
-            return result, True
-
-        # --- AGGRESSIVE FUZZY PARSING FOR DICTATION ---
-        has_dictate_action = any(kw in lower_input for kw in ["take a note", "dictate", "record this"])
-        if has_dictate_action:
-            self.log_action("Initiating voice input for dictation.")
-            # In a real scenario, this would trigger actual voice recording and transcription
-            # For now, we'll simulate it and expect the user to provide the content.
-            simulated_transcription = self.process_voice_input() # Calls the simulated Whisper
-            
-            file_name = "dictated_note.txt"
-            relative_path = "dev folder"
-            if "file called" in lower_input:
-                try:
-                    file_name = lower_input.split("file called")[1].strip().split()[0].strip('.,')
-                except IndexError:
-                    pass
-
-            self.log_action(f"Executing Toolbox command: dictate_note with content '{simulated_transcription[:50]}...' ")
-            result = self.toolbox.dictate_note(simulated_transcription, file_name, relative_path)
-            return result, True
-
-        # --- AGGRESSIVE FUZZY PARSING FOR DOCUMENT ORGANIZATION/RENDERING ---
-        has_organize_action = any(kw in lower_input for kw in ["render", "draw", "organize", "create"]) and any(kw in lower_input for kw in ["certificate", "document", "report"])
-        if has_organize_action:
-            doc_name = "new_document.txt"
             doc_content = "[Generated Document Content]"
             category = "documents"
-            relative_path = "dev folder"
-
             if "certificate" in lower_input:
-                doc_name = "certificate_of_achievement.txt"
                 doc_content = "This certifies that [Name] has achieved [Achievement].\nDate: [Date]"
                 category = "certificates"
             elif "report" in lower_input:
-                doc_name = "report.txt"
                 doc_content = "[Generated Report Content]"
                 category = "reports"
             
-            if "called" in lower_input:
-                try:
-                    doc_name = lower_input.split("called")[1].strip().split()[0].strip('.,')
-                except IndexError:
-                    pass
+            relative_path = "dev folder" if "dev folder" in lower_input or "c:\\dev" in lower_input else ""
+            self.log_action(f"Dispatching organize_document: name='{doc_name}', category='{category}', path='{relative_path}'")
+            return self.toolbox.organize_document(doc_name, doc_content, category, relative_path)
 
-            self.log_action(f"Executing Toolbox command: organize_document with name '{doc_name}' in category '{category}'")
-            result = self.toolbox.organize_document(doc_name, doc_content, category, relative_path)
-            return result, True
-
-        # --- AGGRESSIVE FUZZY PARSING FOR DELETION ---
-        has_delete_action = any(kw in lower_input for kw in ["delete", "remove", "erase"]) and any(kw in lower_input for kw in ["file", "folder", "item", "directory"])
-        if has_delete_action:
-            item_to_delete = ""
-            # Try to extract the item name/path
-            if "delete" in lower_input:
-                parts = lower_input.split("delete", 1)
-                if len(parts) > 1:
-                    item_to_delete = parts[1].strip()
+        # --- Tool: delete_item ---
+        if any(kw in lower_input for kw in ["delete", "remove", "erase"]) and any(kw in lower_input for kw in ["file", "folder", "item", "directory"]):
+            item_name = self._extract_item_name(user_input, ["delete", "remove", "erase", "file", "folder", "item", "directory", "called", "labeled"])
+            if not item_name: 
+                return "FAILURE: Please specify what you want me to delete."
             
-            if not item_to_delete:
-                return "FAILURE: Please specify what you want me to delete.", True
+            # Resolve the full path for confirmation
+            full_path_to_delete = self.toolbox._resolve_path(item_name, user_input) # Pass user_input for path context
+            
+            if not os.path.exists(full_path_to_delete):
+                return f"FAILURE: I cannot find '{full_path_to_delete}' to delete. Please provide the full path if it's not in C:\dev."
 
-            # Construct full path (assuming C:\dev for now, or relative to project)
-            # This needs to be smarter, but for initial test, assume C:\dev
-            # A more robust solution would involve asking the user for the full path or searching
-            potential_path = os.path.join(self.toolbox.base_path, item_to_delete)
-            if not os.path.exists(potential_path):
-                # Also check if it's a direct path provided by user
-                if os.path.exists(item_to_delete):
-                    potential_path = item_to_delete
-                else:
-                    return f"FAILURE: I cannot find '{item_to_delete}' to delete. Please provide the full path if it's not in C:\dev.", True
+            self.pending_deletion_path = full_path_to_delete
+            return f"I have located '{full_path_to_delete}'. Are you sure you want me to permanently delete this? Please type 'YES' to confirm."
 
-            self.pending_deletion_path = potential_path
-            return f"I have located '{potential_path}'. Are you sure you want me to permanently delete this? Please type 'YES' to confirm.", True
+        # --- Tool: clean_empty_folders ---
+        if "clean empty folders" in lower_input or "delete empty folders" in lower_input:
+            relative_path = "dev folder" if "dev folder" in lower_input or "c:\\dev" in lower_input else ""
+            self.log_action(f"Dispatching clean_empty_folders in path '{relative_path}'")
+            return self.toolbox.clean_empty_folders(relative_path)
 
-        # Keywords for system status
+        # --- Tool: check_system_status ---
         if "check system" in lower_input or "system status" in lower_input:
-            self.log_action("Executing Toolbox command: check_system_status")
-            result = self.toolbox.check_system_status()
-            return result, True
+            self.log_action("Dispatching check_system_status")
+            return self.toolbox.check_system_status()
 
-        # If no command is found, return None and False
-        return None, False
+        return None # No tool dispatched
