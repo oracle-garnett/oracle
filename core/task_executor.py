@@ -156,6 +156,19 @@ class TaskToolbox:
         """Simulates checking system resources."""
         return "SUCCESS: System status check complete. CPU: 45%, RAM: 60% (llama3 is running)."
 
+    def clean_empty_folders(self, target_path: str = "") -> str:
+        """Deletes all empty subfolders within a given target path."""
+        base_dir = self._resolve_path("", target_path)
+        deleted_count = 0
+        try:
+            for dirpath, dirnames, filenames in os.walk(base_dir, topdown=False):
+                if not dirnames and not filenames:
+                    os.rmdir(dirpath)
+                    deleted_count += 1
+            return f"SUCCESS: Deleted {deleted_count} empty folders in \'{base_dir}\"."
+        except Exception as e:
+            return f"FAILURE: Could not clean empty folders in \'{base_dir}\' due to System Error: {e}"
+
 # --- Task Executor ---
 class TaskExecutor:
     """
