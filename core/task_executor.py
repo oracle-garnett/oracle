@@ -5,7 +5,7 @@ import traceback
 from typing import Any, Dict, List
 import time
 import random
-import shutil # Added for file organization
+import shutil # Added for file organization and deletion
 
 # --- Placeholder Imports for Dependencies ---
 # These are needed to make the TaskExecutor class runnable in the user's environment
@@ -113,6 +113,26 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: Could not organize document at {final_path}. System Error: {e}"
 
+    def delete_item(self, item_path: str) -> str:
+        """Deletes a file or an empty folder at the specified path using direct Python operations."""
+        try:
+            if os.path.isfile(item_path):
+                os.remove(item_path)
+                return f"SUCCESS: File \'{item_path}\' deleted."
+            elif os.path.isdir(item_path):
+                # Only remove if directory is empty, or use rmtree for non-empty
+                if not os.listdir(item_path): # Check if directory is empty
+                    os.rmdir(item_path)
+                    return f"SUCCESS: Empty folder \'{item_path}\' deleted."
+                else:
+                    # For non-empty directories, use shutil.rmtree
+                    shutil.rmtree(item_path)
+                    return f"SUCCESS: Folder \'{item_path}\' and its contents deleted."
+            else:
+                return f"FAILURE: Item at \'{item_path}\' does not exist or is not a file/folder."
+        except Exception as e:
+            return f"FAILURE: Could not delete item at \'{item_path}\'. System Error: {e}"
+
     def check_system_status(self) -> str:
         """Simulates checking system resources."""
         return "SUCCESS: System status check complete. CPU: 45%, RAM: 60% (llama3 is running)."
@@ -130,6 +150,9 @@ class TaskExecutor:
         self.vision = OracleVision()
         self.toolbox = TaskToolbox()
         
+        # State for deletion confirmation
+        self.pending_deletion_path = None
+
         # Load initial configuration (simulated)
         self.config = self._load_config()
         self.model.load_model(self.config["ollama_model"])
@@ -211,7 +234,20 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # 1. --- DIRECT COMMAND INTERCEPT ---
+            # --- DELETION CONFIRMATION LOGIC ---
+            if self.pending_deletion_path:
+                if user_input.lower() == "yes":
+                    path_to_delete = self.pending_deletion_path
+                    self.pending_deletion_path = None # Clear pending state
+                    self.log_action(f"User confirmed deletion of: {path_to_delete}")
+                    return self.toolbox.delete_item(path_to_delete)
+                else:
+                    self.pending_deletion_path = None # Clear pending state
+                    return "Deletion cancelled by user."
+
+            # 1. --- DIRECT COMMAND INTERCEPT (Function Calling Style) ---
+            # This is where we'll implement a more robust function calling mechanism
+            # For now, we'll keep the fuzzy parsing but add deletion
             tool_result, tool_used = self._check_for_toolbox_command(user_input)
             if tool_used:
                 # If a tool was used, return the result directly, bypassing the LLM
@@ -239,7 +275,9 @@ class TaskExecutor:
             system_prompt = """You are Oracle, a sophisticated local AI assistant with a Toolbox. 
 Your primary function is to execute tasks for the user. 
 If the user asks you to perform an action (like creating a file or folder), you MUST use your tools. 
-DO NOT just provide instructions on how to do it. EXECUTE the task."""
+DO NOT just provide instructions on how to do it. EXECUTE the task. 
+If a tool execution fails, report the exact error. 
+If the user asks to delete something, you MUST ask for confirmation before proceeding."""
             full_prompt = f"{system_prompt}\n\nContext from memory:\n{context}\n{visual_info}\n{curiosity_prompt}\nUser: {user_input}"
             
             # 2.5 Generate response
@@ -354,7 +392,7 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
         if has_dictate_action:
             self.log_action("Initiating voice input for dictation.")
             # In a real scenario, this would trigger actual voice recording and transcription
-            # For now, we'll prompt the user for input if needed.
+            # For now, we'll simulate it and expect the user to provide the content.
             simulated_transcription = self.process_voice_input() # Calls the simulated Whisper
             
             file_name = "dictated_note.txt"
@@ -395,6 +433,33 @@ DO NOT just provide instructions on how to do it. EXECUTE the task."""
             self.log_action(f"Executing Toolbox command: organize_document with name '{doc_name}' in category '{category}'")
             result = self.toolbox.organize_document(doc_name, doc_content, category, relative_path)
             return result, True
+
+        # --- AGGRESSIVE FUZZY PARSING FOR DELETION ---
+        has_delete_action = any(kw in lower_input for kw in ["delete", "remove", "erase"]) and any(kw in lower_input for kw in ["file", "folder", "item", "directory"])
+        if has_delete_action:
+            item_to_delete = ""
+            # Try to extract the item name/path
+            if "delete" in lower_input:
+                parts = lower_input.split("delete", 1)
+                if len(parts) > 1:
+                    item_to_delete = parts[1].strip()
+            
+            if not item_to_delete:
+                return "FAILURE: Please specify what you want me to delete.", True
+
+            # Construct full path (assuming C:\dev for now, or relative to project)
+            # This needs to be smarter, but for initial test, assume C:\dev
+            # A more robust solution would involve asking the user for the full path or searching
+            potential_path = os.path.join(self.toolbox.base_path, item_to_delete)
+            if not os.path.exists(potential_path):
+                # Also check if it's a direct path provided by user
+                if os.path.exists(item_to_delete):
+                    potential_path = item_to_delete
+                else:
+                    return f"FAILURE: I cannot find '{item_to_delete}' to delete. Please provide the full path if it's not in C:\dev.", True
+
+            self.pending_deletion_path = potential_path
+            return f"I have located '{potential_path}'. Are you sure you want me to permanently delete this? Please type 'YES' to confirm.", True
 
         # Keywords for system status
         if "check system" in lower_input or "system status" in lower_input:
