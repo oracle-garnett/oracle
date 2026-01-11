@@ -1,6 +1,7 @@
 import time
 import sys
 import os
+import subprocess
 from core.task_executor import TaskExecutor
 from safeguards.admin_override import AdminOverride
 from safeguards.resource_monitor import ResourceMonitor
@@ -23,6 +24,16 @@ def initialize_oracle():
 
     print("Oracle initialization complete.")
     return task_executor, admin_override, resource_monitor
+
+def trigger_auto_save():
+    """Triggers the savepoint script to ensure memory persistence on shutdown."""
+    print("\n--- Oracle Shutdown Protocol: Initiating Auto-Save ---")
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), 'scripts', 'create_savepoint.py')
+        # Run the savepoint script as a separate process
+        subprocess.run([sys.executable, script_path], check=True)
+    except Exception as e:
+        print(f"Auto-Save failed: {e}")
 
 def main():
     """The main loop for the Oracle application."""
@@ -51,6 +62,9 @@ def main():
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
             time.sleep(0.1)
+    
+    # Trigger Auto-Save before final exit
+    trigger_auto_save()
 
 if __name__ == "__main__":
     main()
