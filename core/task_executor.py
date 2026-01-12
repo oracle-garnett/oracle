@@ -24,12 +24,39 @@ class TaskToolbox:
         os.makedirs(self.dev_folder, exist_ok=True)
 
     def _resolve_path(self, path_str: str) -> str:
-        path_lower = path_str.lower()
+        path_lower = path_str.lower().strip("'\"")
         if "desktop" in path_lower: return self.desktop
         elif "documents" in path_lower: return self.documents
         elif "dev folder" in path_lower or "c:\\dev" in path_lower: return self.dev_folder
         elif os.path.isabs(path_str): return path_str
-        else: return self.home
+        else: return self.dev_folder # Default to dev folder for safety
+
+    def delete_item(self, item_name: str, directory: str = "dev folder") -> str:
+        """Robustly deletes a file or folder by searching for it."""
+        target_dir = self._resolve_path(directory)
+        item_name = item_name.strip("'\"")
+        
+        # Try exact match first
+        final_path = os.path.join(target_dir, item_name)
+        
+        # If not found, try a fuzzy search in the directory
+        if not os.path.exists(final_path):
+            for entry in os.listdir(target_dir):
+                if item_name.lower() in entry.lower():
+                    final_path = os.path.join(target_dir, entry)
+                    break
+        
+        try:
+            if os.path.isdir(final_path):
+                shutil.rmtree(final_path)
+                return f"SUCCESS: Folder '{os.path.basename(final_path)}' deleted from {os.path.dirname(final_path)}."
+            elif os.path.isfile(final_path):
+                os.remove(final_path)
+                return f"SUCCESS: File '{os.path.basename(final_path)}' deleted from {os.path.dirname(final_path)}."
+            else:
+                return f"FAILURE: Could not find '{item_name}' in {target_dir}."
+        except Exception as e:
+            return f"FAILURE: Error deleting '{item_name}': {e}"
 
     def list_files(self, directory: str = "dev folder") -> str:
         target = self._resolve_path(directory)
@@ -39,19 +66,9 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: Could not list files. Error: {e}"
 
-    def read_file(self, file_name: str, directory: str = "dev folder") -> str:
-        target_dir = self._resolve_path(directory)
-        final_path = os.path.join(target_dir, file_name)
-        try:
-            with open(final_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            return f"SUCCESS: Read file {file_name}. Content: {content[:1000]}..."
-        except Exception as e:
-            return f"FAILURE: Could not read file. Error: {e}"
-
     def write_to_file(self, file_name: str, content: str, directory: str = "dev folder") -> str:
         target_dir = self._resolve_path(directory)
-        final_path = os.path.join(target_dir, file_name)
+        final_path = os.path.join(target_dir, file_name.strip("'\""))
         try:
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
             with open(final_path, 'w', encoding='utf-8') as f:
@@ -62,7 +79,7 @@ class TaskToolbox:
 
     def create_folder(self, folder_name: str, directory: str = "dev folder") -> str:
         target_dir = self._resolve_path(directory)
-        final_path = os.path.join(target_dir, folder_name)
+        final_path = os.path.join(target_dir, folder_name.strip("'\""))
         try:
             os.makedirs(final_path, exist_ok=True)
             return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
@@ -82,7 +99,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Direct Command System.")
+        self.log_action("TaskExecutor initialized with Physical Reality Logic.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -116,44 +133,40 @@ class TaskExecutor:
             
             visual_info = ""
             if self.current_visual_context:
-                visual_info = f"\nVisual Context:\n{self.current_visual_context['extracted_text']}\n"
+                visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = """You are Oracle, a sophisticated local AI assistant.
-You have full agency over this device. To execute a task, you MUST use a Direct Command.
-Your response MUST include one of these commands if you want to affect the real world:
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with physical agency.
+You can see the user's screen and interact with their files.
+To execute a task, you MUST use a Direct Command.
 
+COMMAND: delete_item(name, directory)
 COMMAND: write_to_file(file_name, content, directory)
 COMMAND: create_folder(folder_name, directory)
-COMMAND: read_file(file_name, directory)
 COMMAND: list_files(directory)
 
-Example: COMMAND: write_to_file("pi.txt", "3.14159...", "dev folder")
-
-If you do not include the 'COMMAND:' prefix, your hands will not move. 
-Always provide the actual content the user requested."""
+If you see a folder on screen and the user asks to delete it, use 'delete_item'.
+Always provide the full command. Example: COMMAND: delete_item("test", "dev folder")"""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
             # 2. --- DIRECT COMMAND EXECUTION ---
-            # We parse the response for the "COMMAND:" prefix
             command_match = re.search(r'COMMAND:\s*(\w+)\((.*?)\)', response)
             if command_match:
                 cmd_name = command_match.group(1)
-                # Simple argument parsing (split by comma, strip quotes)
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
                 result = "FAILURE: Unknown command."
-                if cmd_name == "write_to_file" and len(args) >= 2:
+                if cmd_name == "delete_item" and len(args) >= 1:
+                    dir_name = args[1] if len(args) > 1 else "dev folder"
+                    result = self.toolbox.delete_item(args[0], dir_name)
+                elif cmd_name == "write_to_file" and len(args) >= 2:
                     dir_name = args[2] if len(args) > 2 else "dev folder"
                     result = self.toolbox.write_to_file(args[0], args[1], dir_name)
                 elif cmd_name == "create_folder" and len(args) >= 1:
                     dir_name = args[1] if len(args) > 1 else "dev folder"
                     result = self.toolbox.create_folder(args[0], dir_name)
-                elif cmd_name == "read_file" and len(args) >= 1:
-                    dir_name = args[1] if len(args) > 1 else "dev folder"
-                    result = self.toolbox.read_file(args[0], dir_name)
                 elif cmd_name == "list_files":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
