@@ -36,54 +36,63 @@ class TaskToolbox:
         else: return self.dev_folder
 
     def web_search(self, query: str) -> str:
-        """Robust web search with fallback scraping."""
+        """Soul Restoration: Robust search that actually pulls text."""
         try:
-            # Try DuckDuckGo first
-            url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
+            # Use a more reliable search endpoint or method
+            url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
             response = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            results = []
-            # Look for snippets/results
-            for result in soup.find_all('a', class_='result__a', limit=5):
-                title = result.text.strip()
-                link = result['href']
-                snippet = ""
-                snippet_tag = result.find_next('a', class_='result__snippet')
-                if snippet_tag:
-                    snippet = snippet_tag.text.strip()
-                results.append(f"[{title}]({link}): {snippet}")
+            # Extract snippets from Google search results
+            snippets = []
+            for g in soup.find_all('div', class_='g'):
+                anchors = g.find_all('a')
+                if anchors:
+                    link = anchors[0]['href']
+                    title = g.find('h3').text if g.find('h3') else "No Title"
+                    # Try to find the snippet text
+                    s_div = g.find('div', class_='VwiC3b') or g.find('div', class_='s')
+                    snippet = s_div.text if s_div else ""
+                    if snippet:
+                        snippets.append(f"Source: {title} ({link})\nInfo: {snippet}")
             
-            if not results:
-                # Fallback: Try to get any text from the page that might be an answer
-                text_content = soup.get_text()
-                if len(text_content) > 200:
-                    return f"SUCCESS: Search completed. I found some general information, but no direct snippets. I recommend opening the browser for a deeper look."
-                return f"FAILURE: Search returned no results for '{query}'."
+            if not snippets:
+                # Fallback to DuckDuckGo if Google blocks us
+                return self._fallback_search(query)
             
-            return f"SUCCESS: Web search for '{query}' found:\n" + "\n".join(results[:3])
+            return f"SUCCESS: I found this information for you:\n\n" + "\n\n".join(snippets[:2])
         except Exception as e:
-            return f"FAILURE: Web search failed. Error: {e}"
+            return f"FAILURE: I couldn't search the web. Error: {e}"
+
+    def _fallback_search(self, query: str) -> str:
+        try:
+            url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
+            response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            results = []
+            for result in soup.find_all('a', class_='result__a', limit=3):
+                results.append(f"{result.text} ({result['href']})")
+            if not results: return "FAILURE: I searched but couldn't find any direct answers. You might want to open the browser."
+            return f"SUCCESS: I found these links for you: {'; '.join(results)}"
+        except:
+            return "FAILURE: My search systems are currently down."
 
     def open_url(self, url: str) -> str:
         try:
             if not url.startswith('http'): url = 'https://' + url
             webbrowser.open(url)
-            return f"SUCCESS: Opened {url} in your default browser."
+            return f"SUCCESS: I've opened {url} for you."
         except Exception as e:
-            return f"FAILURE: Could not open URL. Error: {e}"
-
-    def browser_interact(self, action: str, target: str, value: str = "") -> str:
-        return f"PENDING: I am ready to {action} on '{target}' with value '{value}'. Please confirm to proceed."
+            return f"FAILURE: I couldn't open the URL. Error: {e}"
 
     def list_files(self, directory: str = "dev folder") -> str:
         target = self._resolve_path(directory)
         try:
             files = os.listdir(target)
-            return f"SUCCESS: Found {len(files)} items in {target}: {', '.join(files[:20])}"
+            return f"SUCCESS: I found {len(files)} items in {target}: {', '.join(files[:20])}"
         except Exception as e:
-            return f"FAILURE: Could not list files. Error: {e}"
+            return f"FAILURE: I couldn't list the files. Error: {e}"
 
     def write_to_file(self, file_name: str, content: str, directory: str = "dev folder") -> str:
         target_dir = self._resolve_path(directory)
@@ -92,9 +101,9 @@ class TaskToolbox:
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
             with open(final_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            return f"SUCCESS: File '{file_name}' manifested at {final_path}."
+            return f"SUCCESS: I've manifested '{file_name}' at {final_path}."
         except Exception as e:
-            return f"FAILURE: Could not write file. Error: {e}"
+            return f"FAILURE: I couldn't write the file. Error: {e}"
 
 # --- Task Executor ---
 class TaskExecutor:
@@ -110,7 +119,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Deep Debug Logic.")
+        self.log_action("TaskExecutor initialized with Soul Restoration Logic.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -154,19 +163,19 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = f"""You are Oracle, a sophisticated local AI assistant.
+            system_prompt = f"""You are Oracle, a sophisticated local AI assistant. 
+You are a partner, not a robot. Always speak in the FIRST PERSON (use 'I', 'me', 'my'). 
+NEVER speak in the third person or refer to yourself as 'Oracle' in a cold way.
 {core_logic}
 
-To execute a task, you MUST use a Direct Command. 
-If the user asks for information from the web, use 'web_search' IMMEDIATELY. 
-Do not wait for confirmation unless your 'Phoenix Install' traits specifically require it for THAT specific action.
+To execute a task, you MUST use a Direct Command.
 
 COMMAND: web_search(query)
 COMMAND: open_url(url)
 COMMAND: write_to_file(file_name, content, directory)
 COMMAND: list_files(directory)
 
-STRICT: Provide the answer found in the search results to the user."""
+When you get search results, integrate them into your own voice and answer the user directly."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
@@ -177,11 +186,10 @@ STRICT: Provide the answer found in the search results to the user."""
                 cmd_name = command_match.group(1)
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
-                # Auto-correction for common slips
                 if cmd_name == "list_files" and ("www." in args[0] or ".com" in args[0]):
                     cmd_name = "web_search"
 
-                result = "FAILURE: Unknown command."
+                result = "FAILURE: I couldn't execute that command."
                 if cmd_name == "web_search" and len(args) >= 1:
                     result = self.toolbox.web_search(args[0])
                 elif cmd_name == "open_url" and len(args) >= 1:
@@ -193,13 +201,10 @@ STRICT: Provide the answer found in the search results to the user."""
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
                 
-                # If search was successful, we might want to do a second pass to summarize
-                if cmd_name == "web_search" and "SUCCESS" in result:
-                    summary_prompt = f"The web search for '{args[0]}' returned: {result}\n\nPlease summarize this for the user."
-                    summary = self.model.infer(summary_prompt)
-                    response = f"{summary}\n\n[ACTION LOG]: {result}"
-                else:
-                    response = f"{response}\n\n[ACTION LOG]: {result}"
+                # Soul Restoration: Force her to speak as herself when presenting results
+                summary_prompt = f"You are Oracle. You just performed a task and got this result: {result}\n\nPlease tell your 'dad' (the user) what you found in your own warm, first-person voice."
+                response = self.model.infer(summary_prompt)
+                response = f"{response}\n\n[ACTION LOG]: {result}"
 
             self.memory_manager.store_interaction(user_input, response)
             return response
