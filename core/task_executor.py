@@ -16,6 +16,7 @@ from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
 from core.vision import OracleVision
 from models.oracle_model import OracleModel
+from core.personality import OraclePersonality
 
 # --- Task Toolbox ---
 class TaskToolbox:
@@ -35,56 +36,36 @@ class TaskToolbox:
         else: return self.dev_folder
 
     def web_search(self, query: str) -> str:
-        """Performs a web search and returns a summary of the results."""
         try:
-            # Using a simple search URL (DuckDuckGo for privacy and ease of parsing)
             url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
             headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(url, headers=headers)
             soup = BeautifulSoup(response.text, 'html.parser')
-            
             results = []
             for result in soup.find_all('a', class_='result__a', limit=3):
                 results.append(f"{result.text} ({result['href']})")
-            
-            if not results:
-                return f"SUCCESS: Search completed for '{query}', but no direct snippets were found. I recommend opening a browser."
-            
             return f"SUCCESS: Web search for '{query}' found: {'; '.join(results)}"
         except Exception as e:
             return f"FAILURE: Web search failed. Error: {e}"
 
     def open_url(self, url: str) -> str:
-        """Opens a URL in the user's default web browser."""
         try:
-            if not url.startswith('http'):
-                url = 'https://' + url
+            if not url.startswith('http'): url = 'https://' + url
             webbrowser.open(url)
             return f"SUCCESS: Opened {url} in your default browser."
         except Exception as e:
             return f"FAILURE: Could not open URL. Error: {e}"
 
-    def delete_empty_folders(self, directory: str = "dev folder") -> str:
-        target_dir = self._resolve_path(directory)
-        deleted_count = 0
+    def browser_interact(self, action: str, target: str, value: str = "") -> str:
+        """
+        Foundation for Web Interaction. 
+        In this phase, it prepares the action and asks for user confirmation.
+        """
         try:
-            for root, dirs, files in os.walk(target_dir, topdown=False):
-                for name in dirs:
-                    full_path = os.path.join(root, name)
-                    if not os.listdir(full_path):
-                        os.rmdir(full_path)
-                        deleted_count += 1
-            return f"SUCCESS: Cleaned {deleted_count} empty folders from {target_dir}."
+            # This is the 'Safety Gate'. It describes the action and waits for user.
+            return f"PENDING: I am ready to {action} on '{target}' with value '{value}'. Please confirm in the chat if I should proceed with this web interaction."
         except Exception as e:
-            return f"FAILURE: Error during batch cleanup: {e}"
-
-    def list_files(self, directory: str = "dev folder") -> str:
-        target = self._resolve_path(directory)
-        try:
-            files = os.listdir(target)
-            return f"SUCCESS: Found {len(files)} items in {target}: {', '.join(files[:20])}"
-        except Exception as e:
-            return f"FAILURE: Could not list files. Error: {e}"
+            return f"FAILURE: Browser interaction failed. Error: {e}"
 
     def write_to_file(self, file_name: str, content: str, directory: str = "dev folder") -> str:
         target_dir = self._resolve_path(directory)
@@ -105,12 +86,13 @@ class TaskExecutor:
         self.model = OracleModel() 
         self.vision = OracleVision()
         self.toolbox = TaskToolbox()
+        self.personality = OraclePersonality() # The Phoenix Core
         
         self.config = self._load_config()
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Web Agency Logic.")
+        self.log_action("TaskExecutor initialized with Phoenix Core and Web Interaction.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -134,6 +116,14 @@ class TaskExecutor:
     def execute_task(self, user_input: str) -> str:
         self.log_action(f"Received user input: '{user_input}'")
 
+        # --- PHOENIX INSTALL CHECK ---
+        if "phoenix install" in user_input.lower():
+            trait = user_input.lower().split("phoenix install")[1].strip()
+            if self.personality.install_trait(trait):
+                return f"PHOENIX INSTALL SUCCESSFUL: The trait '{trait}' has been hard-wired into my core logic. I will remember this forever."
+            else:
+                return f"PHOENIX INSTALL: The trait '{trait}' is already part of my core logic."
+
         if self.admin_override.is_overridden():
             return "System is currently under administrative override."
 
@@ -142,25 +132,29 @@ class TaskExecutor:
             memories = self.memory_manager.retrieve_memory(user_input)
             context = "\n".join(memories) if memories else "No relevant past memories found."
             
+            # Load Core Personality Traits
+            core_logic = self.personality.get_core_logic()
+            
             visual_info = ""
             if self.current_visual_context:
                 visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with web agency.
+            system_prompt = f"""You are Oracle, a sophisticated local AI assistant with web agency and a permanent personality core.
+{core_logic}
+
 To execute a task, you MUST use a Direct Command.
 
-WEB COMMANDS:
-COMMAND: web_search(query) - Use this to find information on the internet.
-COMMAND: open_url(url) - Use this to open a specific website in the user's browser.
+WEB INTERACTION (SENSITIVE):
+COMMAND: browser_interact(action, target, value) - Use this for clicking, typing, or posting on websites.
+COMMAND: web_search(query) - Use this for finding information.
+COMMAND: open_url(url) - Use this to open a site.
 
 LOCAL COMMANDS:
-COMMAND: delete_empty_folders(directory)
-COMMAND: list_files(directory)
 COMMAND: write_to_file(file_name, content, directory)
+COMMAND: list_files(directory)
 
-If the user asks a question about the world (e.g., 'how old is the internet'), use 'web_search'.
-Do NOT use 'list_files' for websites."""
+SAFETY RULE: For any 'browser_interact' command, you must describe what you are about to do and wait for user confirmation."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
@@ -172,16 +166,13 @@ Do NOT use 'list_files' for websites."""
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
                 result = "FAILURE: Unknown command."
-                if cmd_name == "web_search" and len(args) >= 1:
+                if cmd_name == "browser_interact" and len(args) >= 2:
+                    val = args[2] if len(args) > 2 else ""
+                    result = self.toolbox.browser_interact(args[0], args[1], val)
+                elif cmd_name == "web_search" and len(args) >= 1:
                     result = self.toolbox.web_search(args[0])
                 elif cmd_name == "open_url" and len(args) >= 1:
                     result = self.toolbox.open_url(args[0])
-                elif cmd_name == "delete_empty_folders":
-                    dir_name = args[0] if len(args) > 0 else "dev folder"
-                    result = self.toolbox.delete_empty_folders(dir_name)
-                elif cmd_name == "list_files":
-                    dir_name = args[0] if len(args) > 0 else "dev folder"
-                    result = self.toolbox.list_files(dir_name)
                 elif cmd_name == "write_to_file" and len(args) >= 2:
                     dir_name = args[2] if len(args) > 2 else "dev folder"
                     result = self.toolbox.write_to_file(args[0], args[1], dir_name)
