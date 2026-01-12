@@ -29,17 +29,13 @@ class TaskToolbox:
         elif "documents" in path_lower: return self.documents
         elif "dev folder" in path_lower or "c:\\dev" in path_lower: return self.dev_folder
         elif os.path.isabs(path_str): return path_str
-        else: return self.dev_folder # Default to dev folder for safety
+        else: return self.dev_folder
 
     def delete_item(self, item_name: str, directory: str = "dev folder") -> str:
-        """Robustly deletes a file or folder by searching for it."""
         target_dir = self._resolve_path(directory)
         item_name = item_name.strip("'\"")
-        
-        # Try exact match first
         final_path = os.path.join(target_dir, item_name)
         
-        # If not found, try a fuzzy search in the directory
         if not os.path.exists(final_path):
             for entry in os.listdir(target_dir):
                 if item_name.lower() in entry.lower():
@@ -49,14 +45,29 @@ class TaskToolbox:
         try:
             if os.path.isdir(final_path):
                 shutil.rmtree(final_path)
-                return f"SUCCESS: Folder '{os.path.basename(final_path)}' deleted from {os.path.dirname(final_path)}."
+                return f"SUCCESS: Folder '{os.path.basename(final_path)}' deleted."
             elif os.path.isfile(final_path):
                 os.remove(final_path)
-                return f"SUCCESS: File '{os.path.basename(final_path)}' deleted from {os.path.dirname(final_path)}."
+                return f"SUCCESS: File '{os.path.basename(final_path)}' deleted."
             else:
-                return f"FAILURE: Could not find '{item_name}' in {target_dir}."
+                return f"FAILURE: Could not find '{item_name}'."
         except Exception as e:
             return f"FAILURE: Error deleting '{item_name}': {e}"
+
+    def delete_empty_folders(self, directory: str = "dev folder") -> str:
+        """Scans a directory and deletes all empty folders in one go."""
+        target_dir = self._resolve_path(directory)
+        deleted_count = 0
+        try:
+            for root, dirs, files in os.walk(target_dir, topdown=False):
+                for name in dirs:
+                    full_path = os.path.join(root, name)
+                    if not os.listdir(full_path): # If folder is empty
+                        os.rmdir(full_path)
+                        deleted_count += 1
+            return f"SUCCESS: Cleaned {deleted_count} empty folders from {target_dir}."
+        except Exception as e:
+            return f"FAILURE: Error during batch cleanup: {e}"
 
     def list_files(self, directory: str = "dev folder") -> str:
         target = self._resolve_path(directory)
@@ -77,15 +88,6 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: Could not write file. Error: {e}"
 
-    def create_folder(self, folder_name: str, directory: str = "dev folder") -> str:
-        target_dir = self._resolve_path(directory)
-        final_path = os.path.join(target_dir, folder_name.strip("'\""))
-        try:
-            os.makedirs(final_path, exist_ok=True)
-            return f"SUCCESS: Folder '{folder_name}' created at {final_path}."
-        except Exception as e:
-            return f"FAILURE: Could not create folder. Error: {e}"
-
 # --- Task Executor ---
 class TaskExecutor:
     def __init__(self, memory_manager: MemoryManager, admin_override: AdminOverride):
@@ -99,7 +101,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Physical Reality Logic.")
+        self.log_action("TaskExecutor initialized with Deep Agency Logic.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -136,17 +138,16 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with physical agency.
-You can see the user's screen and interact with their files.
-To execute a task, you MUST use a Direct Command.
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with deep agency.
+To execute a task, you MUST use a Direct Command. NEVER use placeholders like (name, directory).
 
+COMMAND: delete_empty_folders(directory)
 COMMAND: delete_item(name, directory)
 COMMAND: write_to_file(file_name, content, directory)
-COMMAND: create_folder(folder_name, directory)
 COMMAND: list_files(directory)
 
-If you see a folder on screen and the user asks to delete it, use 'delete_item'.
-Always provide the full command. Example: COMMAND: delete_item("test", "dev folder")"""
+If the user asks to delete ALL empty folders, use 'delete_empty_folders'.
+Always provide the full command with REAL values. Example: COMMAND: delete_empty_folders("dev folder")"""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
@@ -158,15 +159,15 @@ Always provide the full command. Example: COMMAND: delete_item("test", "dev fold
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
                 result = "FAILURE: Unknown command."
-                if cmd_name == "delete_item" and len(args) >= 1:
+                if cmd_name == "delete_empty_folders":
+                    dir_name = args[0] if len(args) > 0 else "dev folder"
+                    result = self.toolbox.delete_empty_folders(dir_name)
+                elif cmd_name == "delete_item" and len(args) >= 1:
                     dir_name = args[1] if len(args) > 1 else "dev folder"
                     result = self.toolbox.delete_item(args[0], dir_name)
                 elif cmd_name == "write_to_file" and len(args) >= 2:
                     dir_name = args[2] if len(args) > 2 else "dev folder"
                     result = self.toolbox.write_to_file(args[0], args[1], dir_name)
-                elif cmd_name == "create_folder" and len(args) >= 1:
-                    dir_name = args[1] if len(args) > 1 else "dev folder"
-                    result = self.toolbox.create_folder(args[0], dir_name)
                 elif cmd_name == "list_files":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
