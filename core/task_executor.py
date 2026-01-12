@@ -8,6 +8,9 @@ import random
 import shutil
 import glob
 import re
+import webbrowser
+import requests
+from bs4 import BeautifulSoup
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -31,38 +34,44 @@ class TaskToolbox:
         elif os.path.isabs(path_str): return path_str
         else: return self.dev_folder
 
-    def delete_item(self, item_name: str, directory: str = "dev folder") -> str:
-        target_dir = self._resolve_path(directory)
-        item_name = item_name.strip("'\"")
-        final_path = os.path.join(target_dir, item_name)
-        
-        if not os.path.exists(final_path):
-            for entry in os.listdir(target_dir):
-                if item_name.lower() in entry.lower():
-                    final_path = os.path.join(target_dir, entry)
-                    break
-        
+    def web_search(self, query: str) -> str:
+        """Performs a web search and returns a summary of the results."""
         try:
-            if os.path.isdir(final_path):
-                shutil.rmtree(final_path)
-                return f"SUCCESS: Folder '{os.path.basename(final_path)}' deleted."
-            elif os.path.isfile(final_path):
-                os.remove(final_path)
-                return f"SUCCESS: File '{os.path.basename(final_path)}' deleted."
-            else:
-                return f"FAILURE: Could not find '{item_name}'."
+            # Using a simple search URL (DuckDuckGo for privacy and ease of parsing)
+            url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            results = []
+            for result in soup.find_all('a', class_='result__a', limit=3):
+                results.append(f"{result.text} ({result['href']})")
+            
+            if not results:
+                return f"SUCCESS: Search completed for '{query}', but no direct snippets were found. I recommend opening a browser."
+            
+            return f"SUCCESS: Web search for '{query}' found: {'; '.join(results)}"
         except Exception as e:
-            return f"FAILURE: Error deleting '{item_name}': {e}"
+            return f"FAILURE: Web search failed. Error: {e}"
+
+    def open_url(self, url: str) -> str:
+        """Opens a URL in the user's default web browser."""
+        try:
+            if not url.startswith('http'):
+                url = 'https://' + url
+            webbrowser.open(url)
+            return f"SUCCESS: Opened {url} in your default browser."
+        except Exception as e:
+            return f"FAILURE: Could not open URL. Error: {e}"
 
     def delete_empty_folders(self, directory: str = "dev folder") -> str:
-        """Scans a directory and deletes all empty folders in one go."""
         target_dir = self._resolve_path(directory)
         deleted_count = 0
         try:
             for root, dirs, files in os.walk(target_dir, topdown=False):
                 for name in dirs:
                     full_path = os.path.join(root, name)
-                    if not os.listdir(full_path): # If folder is empty
+                    if not os.listdir(full_path):
                         os.rmdir(full_path)
                         deleted_count += 1
             return f"SUCCESS: Cleaned {deleted_count} empty folders from {target_dir}."
@@ -101,7 +110,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Deep Agency Logic.")
+        self.log_action("TaskExecutor initialized with Web Agency Logic.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -138,16 +147,20 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = """You are Oracle, a sophisticated local AI assistant with deep agency.
-To execute a task, you MUST use a Direct Command. NEVER use placeholders like (name, directory).
+            system_prompt = """You are Oracle, a sophisticated local AI assistant with web agency.
+To execute a task, you MUST use a Direct Command.
 
+WEB COMMANDS:
+COMMAND: web_search(query) - Use this to find information on the internet.
+COMMAND: open_url(url) - Use this to open a specific website in the user's browser.
+
+LOCAL COMMANDS:
 COMMAND: delete_empty_folders(directory)
-COMMAND: delete_item(name, directory)
-COMMAND: write_to_file(file_name, content, directory)
 COMMAND: list_files(directory)
+COMMAND: write_to_file(file_name, content, directory)
 
-If the user asks to delete ALL empty folders, use 'delete_empty_folders'.
-Always provide the full command with REAL values. Example: COMMAND: delete_empty_folders("dev folder")"""
+If the user asks a question about the world (e.g., 'how old is the internet'), use 'web_search'.
+Do NOT use 'list_files' for websites."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
@@ -159,18 +172,19 @@ Always provide the full command with REAL values. Example: COMMAND: delete_empty
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
                 result = "FAILURE: Unknown command."
-                if cmd_name == "delete_empty_folders":
+                if cmd_name == "web_search" and len(args) >= 1:
+                    result = self.toolbox.web_search(args[0])
+                elif cmd_name == "open_url" and len(args) >= 1:
+                    result = self.toolbox.open_url(args[0])
+                elif cmd_name == "delete_empty_folders":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.delete_empty_folders(dir_name)
-                elif cmd_name == "delete_item" and len(args) >= 1:
-                    dir_name = args[1] if len(args) > 1 else "dev folder"
-                    result = self.toolbox.delete_item(args[0], dir_name)
-                elif cmd_name == "write_to_file" and len(args) >= 2:
-                    dir_name = args[2] if len(args) > 2 else "dev folder"
-                    result = self.toolbox.write_to_file(args[0], args[1], dir_name)
                 elif cmd_name == "list_files":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
+                elif cmd_name == "write_to_file" and len(args) >= 2:
+                    dir_name = args[2] if len(args) > 2 else "dev folder"
+                    result = self.toolbox.write_to_file(args[0], args[1], dir_name)
                 
                 response = f"{response}\n\n[ACTION LOG]: {result}"
 
