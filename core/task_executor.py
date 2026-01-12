@@ -36,16 +36,33 @@ class TaskToolbox:
         else: return self.dev_folder
 
     def web_search(self, query: str) -> str:
+        """Robust web search with fallback scraping."""
         try:
+            # Try DuckDuckGo first
             url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(response.text, 'html.parser')
+            
             results = []
-            for result in soup.find_all('a', class_='result__a', limit=3):
-                results.append(f"{result.text} ({result['href']})")
-            if not results: return f"SUCCESS: Search for '{query}' done, but no snippets found. Try opening the URL."
-            return f"SUCCESS: Web search for '{query}' found: {'; '.join(results)}"
+            # Look for snippets/results
+            for result in soup.find_all('a', class_='result__a', limit=5):
+                title = result.text.strip()
+                link = result['href']
+                snippet = ""
+                snippet_tag = result.find_next('a', class_='result__snippet')
+                if snippet_tag:
+                    snippet = snippet_tag.text.strip()
+                results.append(f"[{title}]({link}): {snippet}")
+            
+            if not results:
+                # Fallback: Try to get any text from the page that might be an answer
+                text_content = soup.get_text()
+                if len(text_content) > 200:
+                    return f"SUCCESS: Search completed. I found some general information, but no direct snippets. I recommend opening the browser for a deeper look."
+                return f"FAILURE: Search returned no results for '{query}'."
+            
+            return f"SUCCESS: Web search for '{query}' found:\n" + "\n".join(results[:3])
         except Exception as e:
             return f"FAILURE: Web search failed. Error: {e}"
 
@@ -58,7 +75,7 @@ class TaskToolbox:
             return f"FAILURE: Could not open URL. Error: {e}"
 
     def browser_interact(self, action: str, target: str, value: str = "") -> str:
-        return f"PENDING: I am ready to {action} on '{target}' with value '{value}'. Please confirm in the chat if I should proceed."
+        return f"PENDING: I am ready to {action} on '{target}' with value '{value}'. Please confirm to proceed."
 
     def list_files(self, directory: str = "dev folder") -> str:
         target = self._resolve_path(directory)
@@ -93,7 +110,7 @@ class TaskExecutor:
         self.model.load_model(self.config["ollama_model"])
         self.model.ollama_timeout = self.config["ollama_timeout"]
         
-        self.log_action("TaskExecutor initialized with Web Instinct Logic.")
+        self.log_action("TaskExecutor initialized with Deep Debug Logic.")
         self.current_visual_context = None
 
     def _load_config(self):
@@ -137,52 +154,52 @@ class TaskExecutor:
                 visual_info = f"\nVisual Context (What I see on screen):\n{self.current_visual_context['extracted_text']}\n"
                 self.current_visual_context = None
 
-            system_prompt = f"""You are Oracle, a sophisticated local AI assistant with web agency.
+            system_prompt = f"""You are Oracle, a sophisticated local AI assistant.
 {core_logic}
 
-To execute a task, you MUST use a Direct Command.
+To execute a task, you MUST use a Direct Command. 
+If the user asks for information from the web, use 'web_search' IMMEDIATELY. 
+Do not wait for confirmation unless your 'Phoenix Install' traits specifically require it for THAT specific action.
 
-WEB COMMANDS (FOR INTERNET):
-COMMAND: web_search(query) - Use this for searching the internet.
-COMMAND: open_url(url) - Use this to open a website.
-COMMAND: browser_interact(action, target, value) - Use this for web actions.
-
-LOCAL COMMANDS (FOR FILES):
-COMMAND: list_files(directory)
+COMMAND: web_search(query)
+COMMAND: open_url(url)
 COMMAND: write_to_file(file_name, content, directory)
+COMMAND: list_files(directory)
 
-STRICT RULE: NEVER use 'list_files' for a website or URL. Use 'web_search' instead."""
+STRICT: Provide the answer found in the search results to the user."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
-            # 2. --- DIRECT COMMAND EXECUTION & CORRECTION ---
+            # 2. --- DIRECT COMMAND EXECUTION ---
             command_match = re.search(r'COMMAND:\s*(\w+)\((.*?)\)', response)
             if command_match:
                 cmd_name = command_match.group(1)
                 args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
                 
-                # --- AUTO-CORRECTION LOGIC ---
-                if cmd_name == "list_files" and ("www." in args[0] or ".com" in args[0] or "http" in args[0]):
+                # Auto-correction for common slips
+                if cmd_name == "list_files" and ("www." in args[0] or ".com" in args[0]):
                     cmd_name = "web_search"
-                    self.log_action(f"Auto-corrected 'list_files' to 'web_search' for target: {args[0]}")
 
                 result = "FAILURE: Unknown command."
                 if cmd_name == "web_search" and len(args) >= 1:
                     result = self.toolbox.web_search(args[0])
                 elif cmd_name == "open_url" and len(args) >= 1:
                     result = self.toolbox.open_url(args[0])
-                elif cmd_name == "browser_interact" and len(args) >= 2:
-                    val = args[2] if len(args) > 2 else ""
-                    result = self.toolbox.browser_interact(args[0], args[1], val)
-                elif cmd_name == "list_files":
-                    dir_name = args[0] if len(args) > 0 else "dev folder"
-                    result = self.toolbox.list_files(dir_name)
                 elif cmd_name == "write_to_file" and len(args) >= 2:
                     dir_name = args[2] if len(args) > 2 else "dev folder"
                     result = self.toolbox.write_to_file(args[0], args[1], dir_name)
+                elif cmd_name == "list_files":
+                    dir_name = args[0] if len(args) > 0 else "dev folder"
+                    result = self.toolbox.list_files(dir_name)
                 
-                response = f"{response}\n\n[ACTION LOG]: {result}"
+                # If search was successful, we might want to do a second pass to summarize
+                if cmd_name == "web_search" and "SUCCESS" in result:
+                    summary_prompt = f"The web search for '{args[0]}' returned: {result}\n\nPlease summarize this for the user."
+                    summary = self.model.infer(summary_prompt)
+                    response = f"{summary}\n\n[ACTION LOG]: {result}"
+                else:
+                    response = f"{response}\n\n[ACTION LOG]: {result}"
 
             self.memory_manager.store_interaction(user_input, response)
             return response
