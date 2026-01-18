@@ -11,6 +11,7 @@ import re
 import webbrowser
 import requests
 from bs4 import BeautifulSoup
+from core.web_agent import OracleWebAgent
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -24,6 +25,7 @@ class TaskToolbox:
         self.home = os.path.expanduser("~")
         self.desktop = os.path.join(self.home, "Desktop")
         self.documents = os.path.join(self.home, "Documents")
+        self.web_agent = OracleWebAgent() # Initialize the web agent here
         self.dev_folder = "C:\\dev" if os.name == 'nt' else os.path.join(self.home, "oracle_dev")
         os.makedirs(self.dev_folder, exist_ok=True)
 
@@ -35,56 +37,31 @@ class TaskToolbox:
         elif os.path.isabs(path_str): return path_str
         else: return self.dev_folder
 
-    def web_search(self, query: str) -> str:
-        """Soul Restoration: Robust search that actually pulls text."""
-        try:
-            # Use a more reliable search endpoint or method
-            url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-            response = requests.get(url, headers=headers, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Extract snippets from Google search results
-            snippets = []
-            for g in soup.find_all('div', class_='g'):
-                anchors = g.find_all('a')
-                if anchors:
-                    link = anchors[0]['href']
-                    title = g.find('h3').text if g.find('h3') else "No Title"
-                    # Try to find the snippet text
-                    s_div = g.find('div', class_='VwiC3b') or g.find('div', class_='s')
-                    snippet = s_div.text if s_div else ""
-                    if snippet:
-                        snippets.append(f"Source: {title} ({link})\nInfo: {snippet}")
-            
-            if not snippets:
-                # Fallback to DuckDuckGo if Google blocks us
-                return self._fallback_search(query)
-            
-            return f"SUCCESS: I found this information for you:\n\n" + "\n\n".join(snippets[:2])
-        except Exception as e:
-            return f"FAILURE: I couldn't search the web. Error: {e}"
+    def browse_and_scrape(self, url: str) -> str:
+        """
+        Autonomous Web Agent: Navigates to a URL, scrapes the content, and makes it available for analysis.
+        This replaces the old web_search and open_url functions.
+        """
+        if not url.startswith('http'): url = 'https://' + url
+        return self.web_agent.navigate_and_scrape(url)
 
-    def _fallback_search(self, query: str) -> str:
-        try:
-            url = f"https://duckduckgo.com/html/?q={query.replace(' ', '+')}"
-            response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = []
-            for result in soup.find_all('a', class_='result__a', limit=3):
-                results.append(f"{result.text} ({result['href']})")
-            if not results: return "FAILURE: I searched but couldn't find any direct answers. You might want to open the browser."
-            return f"SUCCESS: I found these links for you: {'; '.join(results)}"
-        except:
-            return "FAILURE: My search systems are currently down."
+    def fill_form(self, selector_type: str, selector_value: str, value: str) -> str:
+        """
+        Autonomous Web Agent: Fills a form element. Requires user confirmation for transactional tasks.
+        """
+        return self.web_agent.fill_form_element(selector_type, selector_value, value)
 
-    def open_url(self, url: str) -> str:
-        try:
-            if not url.startswith('http'): url = 'https://' + url
-            webbrowser.open(url)
-            return f"SUCCESS: I've opened {url} for you."
-        except Exception as e:
-            return f"FAILURE: I couldn't open the URL. Error: {e}"
+    def click_button(self, selector_type: str, selector_value: str) -> str:
+        """
+        Autonomous Web Agent: Clicks a button or link. Requires user confirmation for transactional tasks.
+        """
+        return self.web_agent.click_element(selector_type, selector_value)
+
+    def get_page_content(self) -> str:
+        """
+        Autonomous Web Agent: Retrieves the text content of the currently loaded page.
+        """
+        return self.web_agent.get_current_page_text()
 
     def list_files(self, directory: str = "dev folder") -> str:
         target = self._resolve_path(directory)
@@ -146,6 +123,8 @@ class TaskExecutor:
         if "phoenix install" in user_input.lower():
             trait = user_input.lower().split("phoenix install")[1].strip()
             if self.personality.install_trait(trait):
+                # Reload traits to ensure the current session has the new trait
+                self.personality.traits = self.personality._load_traits()
                 return f"PHOENIX INSTALL SUCCESSFUL: The trait '{trait}' has been hard-wired into my core logic."
             else:
                 return f"PHOENIX INSTALL: The trait '{trait}' is already part of my core logic."
@@ -170,8 +149,10 @@ NEVER speak in the third person or refer to yourself as 'Oracle' in a cold way.
 
 To execute a task, you MUST use a Direct Command.
 
-COMMAND: web_search(query)
-COMMAND: open_url(url)
+	COMMAND: browse_and_scrape(url)
+	COMMAND: fill_form(selector_type, selector_value, value)
+	COMMAND: click_button(selector_type, selector_value)
+	COMMAND: get_page_content()
 COMMAND: write_to_file(file_name, content, directory)
 COMMAND: list_files(directory)
 
@@ -184,16 +165,25 @@ When you get search results, integrate them into your own voice and answer the u
             command_match = re.search(r'COMMAND:\s*(\w+)\((.*?)\)', response)
             if command_match:
                 cmd_name = command_match.group(1)
-                args = [arg.strip().strip('"\'') for arg in command_match.group(2).split(',')]
+                # Split arguments carefully, handling commas inside quotes
+                arg_str = command_match.group(2)
+                args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
                 
-                if cmd_name == "list_files" and ("www." in args[0] or ".com" in args[0]):
-                    cmd_name = "web_search"
-
                 result = "FAILURE: I couldn't execute that command."
-                if cmd_name == "web_search" and len(args) >= 1:
-                    result = self.toolbox.web_search(args[0])
-                elif cmd_name == "open_url" and len(args) >= 1:
-                    result = self.toolbox.open_url(args[0])
+                
+                # --- New Web Agent Commands ---
+                if cmd_name == "browse_and_scrape" and len(args) >= 1:
+                    result = self.toolbox.browse_and_scrape(args[0])
+                elif cmd_name == "get_page_content":
+                    result = self.toolbox.get_page_content()
+                elif cmd_name == "fill_form" and len(args) >= 3:
+                    # Note: The LLM is responsible for asking for confirmation before issuing this command
+                    result = self.toolbox.fill_form(args[0], args[1], args[2])
+                elif cmd_name == "click_button" and len(args) >= 2:
+                    # Note: The LLM is responsible for asking for confirmation before issuing this command
+                    result = self.toolbox.click_button(args[0], args[1])
+                
+                # --- Existing File/System Commands ---
                 elif cmd_name == "write_to_file" and len(args) >= 2:
                     dir_name = args[2] if len(args) > 2 else "dev folder"
                     result = self.toolbox.write_to_file(args[0], args[1], dir_name)

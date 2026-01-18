@@ -25,3 +25,7 @@ ollama
 chromadb
 sentence-transformers
 numpy
+
+# Autonomous Web Agent (Selenium)
+selenium
+webdriver-manager

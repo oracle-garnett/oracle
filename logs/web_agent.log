@@ -1,0 +1,145 @@
+[2026-01-18 14:12:08] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x563f5ba2b4e3 <unknown>
+#1 0x563f5b75ac76 <unknown>
+#2 0x563f5b78804a <unknown>
+#3 0x563f5b7834a1 <unknown>
+#4 0x563f5b780029 <unknown>
+#5 0x563f5b7beccc <unknown>
+#6 0x563f5b7be47f <unknown>
+#7 0x563f5b7b5de3 <unknown>
+#8 0x563f5b78b2dd <unknown>
+#9 0x563f5b78c34e <unknown>
+#10 0x563f5b9eb3e4 <unknown>
+#11 0x563f5b9ef3d7 <unknown>
+#12 0x563f5b9f9b20 <unknown>
+#13 0x563f5b9f0023 <unknown>
+#14 0x563f5b9be1aa <unknown>
+#15 0x563f5ba146b8 <unknown>
+#16 0x563f5ba14847 <unknown>
+#17 0x563f5ba24243 <unknown>
+#18 0x7f27e8894ac3 <unknown>
+
+[2026-01-18 14:12:09] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x56471b25d4e3 <unknown>
+#1 0x56471af8cc76 <unknown>
+#2 0x56471afba04a <unknown>
+#3 0x56471afb54a1 <unknown>
+#4 0x56471afb2029 <unknown>
+#5 0x56471aff0ccc <unknown>
+#6 0x56471aff047f <unknown>
+#7 0x56471afe7de3 <unknown>
+#8 0x56471afbd2dd <unknown>
+#9 0x56471afbe34e <unknown>
+#10 0x56471b21d3e4 <unknown>
+#11 0x56471b2213d7 <unknown>
+#12 0x56471b22bb20 <unknown>
+#13 0x56471b222023 <unknown>
+#14 0x56471b1f01aa <unknown>
+#15 0x56471b2466b8 <unknown>
+#16 0x56471b246847 <unknown>
+#17 0x56471b256243 <unknown>
+#18 0x7f035bc94ac3 <unknown>
+
+[2026-01-18 14:12:22] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x55f40f30f4e3 <unknown>
+#1 0x55f40f03ec76 <unknown>
+#2 0x55f40f06c04a <unknown>
+#3 0x55f40f0674a1 <unknown>
+#4 0x55f40f064029 <unknown>
+#5 0x55f40f0a2ccc <unknown>
+#6 0x55f40f0a247f <unknown>
+#7 0x55f40f099de3 <unknown>
+#8 0x55f40f06f2dd <unknown>
+#9 0x55f40f07034e <unknown>
+#10 0x55f40f2cf3e4 <unknown>
+#11 0x55f40f2d33d7 <unknown>
+#12 0x55f40f2ddb20 <unknown>
+#13 0x55f40f2d4023 <unknown>
+#14 0x55f40f2a21aa <unknown>
+#15 0x55f40f2f86b8 <unknown>
+#16 0x55f40f2f8847 <unknown>
+#17 0x55f40f308243 <unknown>
+#18 0x7f4f91294ac3 <unknown>
+
+[2026-01-18 14:12:23] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x556ab17b44e3 <unknown>
+#1 0x556ab14e3c76 <unknown>
+#2 0x556ab151104a <unknown>
+#3 0x556ab150c4a1 <unknown>
+#4 0x556ab1509029 <unknown>
+#5 0x556ab1547ccc <unknown>
+#6 0x556ab154747f <unknown>
+#7 0x556ab153ede3 <unknown>
+#8 0x556ab15142dd <unknown>
+#9 0x556ab151534e <unknown>
+#10 0x556ab17743e4 <unknown>
+#11 0x556ab17783d7 <unknown>
+#12 0x556ab1782b20 <unknown>
+#13 0x556ab1779023 <unknown>
+#14 0x556ab17471aa <unknown>
+#15 0x556ab179d6b8 <unknown>
+#16 0x556ab179d847 <unknown>
+#17 0x556ab17ad243 <unknown>
+#18 0x7faf15294ac3 <unknown>
+
+[2026-01-18 14:12:36] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x55835df4f4e3 <unknown>
+#1 0x55835dc7ec76 <unknown>
+#2 0x55835dcac04a <unknown>
+#3 0x55835dca74a1 <unknown>
+#4 0x55835dca4029 <unknown>
+#5 0x55835dce2ccc <unknown>
+#6 0x55835dce247f <unknown>
+#7 0x55835dcd9de3 <unknown>
+#8 0x55835dcaf2dd <unknown>
+#9 0x55835dcb034e <unknown>
+#10 0x55835df0f3e4 <unknown>
+#11 0x55835df133d7 <unknown>
+#12 0x55835df1db20 <unknown>
+#13 0x55835df14023 <unknown>
+#14 0x55835dee21aa <unknown>
+#15 0x55835df386b8 <unknown>
+#16 0x55835df38847 <unknown>
+#17 0x55835df48243 <unknown>
+#18 0x7f6b5f494ac3 <unknown>
+
+[2026-01-18 14:12:37] Error initializing WebDriver: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+Current browser version is 128.0.6613.137 with binary path /usr/bin/chromium-browser; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x55be2fab44e3 <unknown>
+#1 0x55be2f7e3c76 <unknown>
+#2 0x55be2f81104a <unknown>
+#3 0x55be2f80c4a1 <unknown>
+#4 0x55be2f809029 <unknown>
+#5 0x55be2f847ccc <unknown>
+#6 0x55be2f84747f <unknown>
+#7 0x55be2f83ede3 <unknown>
+#8 0x55be2f8142dd <unknown>
+#9 0x55be2f81534e <unknown>
+#10 0x55be2fa743e4 <unknown>
+#11 0x55be2fa783d7 <unknown>
+#12 0x55be2fa82b20 <unknown>
+#13 0x55be2fa79023 <unknown>
+#14 0x55be2fa471aa <unknown>
+#15 0x55be2fa9d6b8 <unknown>
+#16 0x55be2fa9d847 <unknown>
+#17 0x55be2faad243 <unknown>
+#18 0x7f27a1894ac3 <unknown>
+
+[2026-01-18 14:13:01] WebDriver initialized successfully.
+[2026-01-18 14:13:01] WebDriver initialized successfully.
+[2026-01-18 14:13:03] Navigated to: https://www.wikipedia.org
+[2026-01-18 14:13:03] Scraped 7822 characters of text from https://www.wikipedia.org
+[2026-01-18 14:13:04] Filled element NAME=search with value: Artificial Intelligence
+[2026-01-18 14:13:04] WebDriver closed.
+[2026-01-18 14:13:04] WebDriver closed.
