@@ -7,7 +7,12 @@ Write-Host "--- Starting Oracle Executable Build Process ---" -ForegroundColor C
 Write-Host "Checking for PyInstaller..."
 pip install pyinstaller
 
-# 2. Run PyInstaller
+# 2. Find Tcl/Tk paths for PyInstaller
+$pythonPath = python -c "import sys; print(sys.prefix)"
+$tclPath = Join-Path $pythonPath "tcl\tcl8.6"
+$tkPath = Join-Path $pythonPath "tcl\tk8.6"
+
+# 3. Run PyInstaller
 # We use --onedir for better stability with complex imports and assets.
 # We use --windowed to hide the console window for the UI.
 Write-Host "Running PyInstaller... This may take a few minutes."
@@ -21,6 +26,8 @@ pyinstaller --noconfirm --onedir --windowed `
     --add-data "models;models" `
     --add-data "config;config" `
     --add-data "assets;assets" `
+    --add-data "$tclPath;_tcl_data" `
+    --add-data "$tkPath;_tk_data" `
     --hidden-import "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
