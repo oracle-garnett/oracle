@@ -7,10 +7,12 @@ Write-Host "--- Starting Oracle Executable Build Process ---" -ForegroundColor C
 Write-Host "Checking for PyInstaller..."
 pip install pyinstaller
 
-# 2. Find Tcl/Tk paths for PyInstaller
-$pythonPath = python -c "import sys; print(sys.prefix)"
-$tclPath = Join-Path $pythonPath "tcl\tcl8.6"
-$tkPath = Join-Path $pythonPath "tcl\tk8.6"
+# 2. Find Tcl/Tk paths dynamically
+$tclPath = python -c "import tkinter; print(tkinter.Tcl().eval('info library'))"
+$tkPath = python -c "import tkinter; print(tkinter.Tk().eval('info library'))"
+
+Write-Host "Found Tcl at: $tclPath"
+Write-Host "Found Tk at: $tkPath"
 
 # 3. Run PyInstaller
 # We use --onedir for better stability with complex imports and assets.
@@ -26,8 +28,8 @@ pyinstaller --noconfirm --onedir --windowed `
     --add-data "models;models" `
     --add-data "config;config" `
     --add-data "assets;assets" `
-    --add-data "$tclPath;_tcl_data" `
-    --add-data "$tkPath;_tk_data" `
+    --add-data "${tclPath};_tcl_data" `
+    --add-data "${tkPath};_tk_data" `
     --hidden-import "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
