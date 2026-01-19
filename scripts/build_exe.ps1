@@ -7,16 +7,19 @@ Write-Host "--- Starting Oracle Executable Build Process ---" -ForegroundColor C
 Write-Host "Checking for PyInstaller..."
 pip install pyinstaller
 
-# 2. Find Tcl/Tk paths dynamically
-$tclPath = python -c "import tkinter; print(tkinter.Tcl().eval('info library'))"
-$tkPath = python -c "import tkinter; print(tkinter.Tk().eval('info library'))"
+# 2. Find Tcl/Tk paths dynamically and normalize for Windows
+$tclPath = python -c "import tkinter, os; print(os.path.normpath(tkinter.Tcl().eval('info library')))"
+$tkPath = python -c "import tkinter, os; print(os.path.normpath(tkinter.Tk().eval('info library')))"
 
-Write-Host "Found Tcl at: $tclPath"
-Write-Host "Found Tk at: $tkPath"
+Write-Host "--- Path Verification ---"
+Write-Host "Tcl Path: $tclPath"
+Write-Host "Tk Path: $tkPath"
+
+if (-not (Test-Path $tclPath)) { Write-Error "Tcl path not found!"; exit }
+if (-not (Test-Path $tkPath)) { Write-Error "Tk path not found!"; exit }
 
 # 3. Run PyInstaller
-# We use --onedir for better stability with complex imports and assets.
-# We use --windowed to hide the console window for the UI.
+# We use --collect-all for customtkinter to ensure all its internal assets are grabbed.
 Write-Host "Running PyInstaller... This may take a few minutes."
 pyinstaller --noconfirm --onedir --windowed `
     --name "Oracle AI Assistant" `
@@ -30,7 +33,7 @@ pyinstaller --noconfirm --onedir --windowed `
     --add-data "assets;assets" `
     --add-data "${tclPath};_tcl_data" `
     --add-data "${tkPath};_tk_data" `
-    --hidden-import "customtkinter" `
+    --collect-all "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
     --hidden-import "PIL.ImageTk" `
