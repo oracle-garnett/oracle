@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 import math
 import random
+import os
 from ui.themes import OracleThemes # Assuming this exists in user's environment
 
 class OracleUI(ctk.CTk):
@@ -28,7 +29,19 @@ class OracleUI(ctk.CTk):
         self.overrideredirect(True)
         self.attributes("-alpha", self.theme["transparency"])
         
+        # Set Window Icon
+        self.set_icon()
+        
         self.setup_ui()
+
+    def set_icon(self):
+        """Sets the window icon from the assets folder."""
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'oracle_icon.ico')
+            if os.path.exists(icon_path):
+                self.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Error loading icon: {e}")
         
         # Bindings for dragging and resizing
         self.bind("<ButtonPress-1>", self.on_press)

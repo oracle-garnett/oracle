@@ -13,12 +13,14 @@ pip install pyinstaller
 Write-Host "Running PyInstaller... This may take a few minutes."
 pyinstaller --noconfirm --onedir --windowed `
     --name "Oracle AI Assistant" `
+    --icon "assets/oracle_icon.ico" `
     --add-data "core;core" `
     --add-data "memory;memory" `
     --add-data "safeguards;safeguards" `
     --add-data "ui;ui" `
     --add-data "models;models" `
     --add-data "config;config" `
+    --add-data "assets;assets" `
     --hidden-import "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
     main.py
