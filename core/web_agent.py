@@ -1,5 +1,7 @@
 import os
 import time
+import sys
+import platform
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -15,7 +17,20 @@ class OracleWebAgent:
     """
     def __init__(self):
         self.driver = None
-        self.log_file = os.path.join(os.path.dirname(__file__), '..', 'logs', 'web_agent.log')
+        
+        # Determine the base directory for logs
+        if getattr(sys, 'frozen', False):
+            # Running as a bundled executable
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as a script
+            base_dir = os.path.join(os.path.dirname(__file__), '..')
+            
+        log_dir = os.path.join(base_dir, 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+            
+        self.log_file = os.path.join(log_dir, 'web_agent.log')
         self._initialize_driver()
 
     def _log(self, message):
@@ -31,12 +46,20 @@ class OracleWebAgent:
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--window-size=1920,1080')
-            options.binary_location = "/usr/bin/chromium-browser"
             options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
             
-            # Use the system's ChromeDriver which matches the installed Chromium version
-            service = Service("/usr/bin/chromedriver")
-            self.driver = webdriver.Chrome(service=service, options=options)
+            if platform.system() == "Windows":
+                # On Windows, let webdriver-manager handle the driver automatically
+                # This is more robust for local user environments
+                driver_path = ChromeDriverManager().install()
+                service = Service(driver_path)
+                self.driver = webdriver.Chrome(service=service, options=options)
+            else:
+                # On Linux (Sandbox environment), use the pre-installed Chromium/ChromeDriver
+                options.binary_location = "/usr/bin/chromium-browser"
+                service = Service("/usr/bin/chromedriver")
+                self.driver = webdriver.Chrome(service=service, options=options)
+                
             self._log("WebDriver initialized successfully.")
         except Exception as e:
             self._log(f"Error initializing WebDriver: {e}")

@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import sys
 from typing import Any, Dict, List
 from memory.encryption import MemoryEncryptor
 from memory.rag_engine import RAGEngine
@@ -14,7 +15,17 @@ class MemoryManager:
         self.encryptor = MemoryEncryptor(secret_key)
         self.rag_engine = RAGEngine()
         self.is_connected = False
-        self.local_cache_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'local_memory.json')
+        
+        # Determine the base directory for logs
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.join(os.path.dirname(__file__), '..')
+            
+        log_dir = os.path.join(base_dir, 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        
+        self.local_cache_path = os.path.join(log_dir, 'local_memory.json')
         
         if not os.path.exists(self.local_cache_path):
             with open(self.local_cache_path, 'w') as f:

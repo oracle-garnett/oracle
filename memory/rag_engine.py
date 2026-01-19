@@ -7,6 +7,7 @@ to have a persistent, evolving memory.
 
 import os
 import json
+import sys
 from typing import List, Dict, Any
 import chromadb
 from chromadb.utils import embedding_functions
@@ -17,7 +18,13 @@ class RAGEngine:
     """
     def __init__(self, storage_path: str = None):
         if storage_path is None:
-            storage_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'vector_db')
+            # Determine the base directory for logs
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.join(os.path.dirname(__file__), '..')
+                
+            storage_path = os.path.join(base_dir, 'logs', 'vector_db')
         
         os.makedirs(storage_path, exist_ok=True)
         

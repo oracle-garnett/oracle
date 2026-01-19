@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 
 class OraclePersonality:
     """
@@ -8,7 +9,13 @@ class OraclePersonality:
     These are 'installed' via the 'Phoenix Install' keyword and persist across all sessions.
     """
     def __init__(self):
-        self.config_dir = os.path.join(os.path.dirname(__file__), '..', 'config')
+        # Determine the base directory for config
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.join(os.path.dirname(__file__), '..')
+            
+        self.config_dir = os.path.join(base_dir, 'config')
         self.traits_file = os.path.join(self.config_dir, 'phoenix_traits.json')
         os.makedirs(self.config_dir, exist_ok=True)
         self.traits = self._load_traits()

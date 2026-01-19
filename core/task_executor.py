@@ -26,7 +26,14 @@ class TaskToolbox:
         self.desktop = os.path.join(self.home, "Desktop")
         self.documents = os.path.join(self.home, "Documents")
         self.web_agent = OracleWebAgent() # Initialize the web agent here
-        self.dev_folder = "C:\\dev" if os.name == 'nt' else os.path.join(self.home, "oracle_dev")
+        
+        # Determine the base directory for the dev folder
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.join(os.path.dirname(__file__), '..')
+            
+        self.dev_folder = os.path.join(base_dir, "oracle_dev")
         os.makedirs(self.dev_folder, exist_ok=True)
 
     def _resolve_path(self, path_str: str) -> str:
@@ -110,7 +117,12 @@ class TaskExecutor:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}\n"
         try:
-            log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.join(os.path.dirname(__file__), '..')
+                
+            log_dir = os.path.join(base_dir, 'logs')
             os.makedirs(log_dir, exist_ok=True)
             with open(os.path.join(log_dir, 'oracle_actions.log'), 'a') as f:
                 f.write(log_entry)
