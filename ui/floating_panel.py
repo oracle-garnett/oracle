@@ -37,9 +37,31 @@ class OracleUI(ctk.CTk):
     def set_icon(self):
         """Sets the window icon from the assets folder."""
         try:
-            icon_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'oracle_icon.ico')
+            # Determine the base directory for assets
+            if getattr(sys, 'frozen', False):
+                # Running as a bundled executable
+                # PyInstaller places data files in the _internal folder (or root of temp dir)
+                # We check both the executable directory and the internal bundle directory
+                base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+                icon_path = os.path.join(base_dir, 'assets', 'oracle_icon.ico')
+            else:
+                # Running as a script
+                base_dir = os.path.join(os.path.dirname(__file__), '..')
+                icon_path = os.path.join(base_dir, 'assets', 'oracle_icon.ico')
+
             if os.path.exists(icon_path):
+                # Use iconbitmap for the main window icon
                 self.iconbitmap(icon_path)
+                # Also set the taskbar icon (important for Windows)
+                try:
+                    from PIL import Image, ImageTk
+                    img = Image.open(icon_path)
+                    photo = ImageTk.PhotoImage(img)
+                    self.wm_iconphoto(True, photo)
+                except Exception:
+                    pass # Fallback if PIL fails
+            else:
+                print(f"Icon not found at: {icon_path}")
         except Exception as e:
             print(f"Error loading icon: {e}")
         

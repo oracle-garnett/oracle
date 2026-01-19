@@ -23,7 +23,12 @@ pyinstaller --noconfirm --onedir --windowed `
     --add-data "assets;assets" `
     --hidden-import "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
+    --hidden-import "PIL.Image" `
+    --hidden-import "PIL.ImageTk" `
     main.py
+
+# Ensure the assets folder is also copied to the root of the dist folder for runtime access
+Copy-Item -Path "assets" -Destination "dist/Oracle AI Assistant/assets" -Recurse -Force
 
 Write-Host "--- Build Complete! ---" -ForegroundColor Green
 Write-Host "You can find your executable in the 'dist/Oracle AI Assistant' folder." -ForegroundColor Yellow
