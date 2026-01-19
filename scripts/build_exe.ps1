@@ -39,6 +39,10 @@ pyinstaller --noconfirm --onedir --windowed `
     --hidden-import "PIL.ImageTk" `
     --hidden-import "chromadb.telemetry.product.posthog" `
     --hidden-import "posthog" `
+    --hidden-import "chromadb.api.rust" `
+    --hidden-import "chromadb.api.segment" `
+    --hidden-import "chromadb.db.impl.sqlite" `
+    --hidden-import "chromadb.migrations.embeddings" `
     main.py
 
 # Ensure the assets folder is also copied to the root of the dist folder for runtime access
