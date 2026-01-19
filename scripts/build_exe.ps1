@@ -25,6 +25,8 @@ pyinstaller --noconfirm --onedir --windowed `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
     --hidden-import "PIL.ImageTk" `
+    --hidden-import "chromadb.telemetry.product.posthog" `
+    --hidden-import "posthog" `
     main.py
 
 # Ensure the assets folder is also copied to the root of the dist folder for runtime access
