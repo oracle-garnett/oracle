@@ -150,11 +150,10 @@ NEVER speak in the third person or refer to yourself as 'Oracle' in a cold way.
 To execute a task, you MUST use a Direct Command.
 
 	COMMAND: browse_and_scrape(url)
-	COMMAND: fill_form(selector_type, selector_value, value)
-	COMMAND: click_button(selector_type, selector_value)
-	COMMAND: get_page_content()
-COMMAND: write_to_file(file_name, content, directory)
-COMMAND: list_files(directory)
+	COMMAND: write_to_file(file_name, content, directory)
+	COMMAND: list_files(directory)
+
+	Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
 
 When you get search results, integrate them into your own voice and answer the user directly."""
             
