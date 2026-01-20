@@ -1,38 +1,30 @@
-# Oracle AI Assistant: Executable Build Script
-# This script uses PyInstaller to bundle Oracle into a standalone Windows folder.
+# Oracle AI Assistant - Windows Build Script
+# This script automates the PyInstaller process with all necessary fixes.
 
-Write-Host "--- Starting Oracle Executable Build Process ---" -ForegroundColor Cyan
+# 1. Ensure we are in the project root
+$ProjectRoot = Get-Location
+Write-Host "Building Oracle from: $ProjectRoot" -ForegroundColor Cyan
 
-# 1. Install PyInstaller if not present
-Write-Host "Checking for PyInstaller..."
-pip install pyinstaller
+# 2. Dynamically find Tcl/Tk paths to fix the 'Tcl data directory not found' error
+$python_path = python -c "import sys; print(sys.prefix)"
+$tcl_path = Join-Path $python_path "tcl/tcl8.6"
+$tk_path = Join-Path $python_path "tcl/tk8.6"
 
-# 2. Find Tcl/Tk paths dynamically and normalize for Windows
-$tclPath = python -c "import tkinter, os; print(os.path.normpath(tkinter.Tcl().eval('info library')))"
-$tkPath = python -c "import tkinter, os; print(os.path.normpath(tkinter.Tk().eval('info library')))"
+# Fallback if the versioned folders aren't found
+if (-not (Test-Path $tcl_path)) { $tcl_path = Join-Path $python_path "tcl/tcl86" }
+if (-not (Test-Path $tk_path)) { $tk_path = Join-Path $python_path "tcl/tk86" }
 
-Write-Host "--- Path Verification ---"
-Write-Host "Tcl Path: $tclPath"
-Write-Host "Tk Path: $tkPath"
-
-if (-not (Test-Path $tclPath)) { Write-Error "Tcl path not found!"; exit }
-if (-not (Test-Path $tkPath)) { Write-Error "Tk path not found!"; exit }
+Write-Host "Found Tcl at: $tcl_path" -ForegroundColor Gray
+Write-Host "Found Tk at: $tk_path" -ForegroundColor Gray
 
 # 3. Run PyInstaller
-# We use --collect-all for customtkinter to ensure all its internal assets are grabbed.
-Write-Host "Running PyInstaller... This may take a few minutes."
+# We use --distpath "release" to bypass any file locks on the old "dist" folder.
 pyinstaller --noconfirm --onedir --windowed `
     --name "Oracle AI Assistant" `
+    --distpath "release" `
     --icon "assets/oracle_icon.ico" `
-    --add-data "core;core" `
-    --add-data "memory;memory" `
-    --add-data "safeguards;safeguards" `
-    --add-data "ui;ui" `
-    --add-data "models;models" `
-    --add-data "config;config" `
-    --add-data "assets;assets" `
-    --add-data "${tclPath};_tcl_data" `
-    --add-data "${tkPath};_tk_data" `
+    --add-data "$($tcl_path);_tcl_data" `
+    --add-data "$($tk_path);_tk_data" `
     --collect-all "customtkinter" `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
@@ -45,9 +37,9 @@ pyinstaller --noconfirm --onedir --windowed `
     --hidden-import "chromadb.migrations.embeddings" `
     main.py
 
-# Ensure the assets folder is also copied to the root of the dist folder for runtime access
-Copy-Item -Path "assets" -Destination "dist/Oracle AI Assistant/assets" -Recurse -Force
+# 4. Ensure the assets folder is also copied to the root of the release folder for runtime access
+Copy-Item -Path "assets" -Destination "release/Oracle AI Assistant/assets" -Recurse -Force
 
 Write-Host "--- Build Complete! ---" -ForegroundColor Green
-Write-Host "You can find your executable in the 'dist/Oracle AI Assistant' folder." -ForegroundColor Yellow
+Write-Host "You can find your executable in the 'release/Oracle AI Assistant' folder." -ForegroundColor Yellow
 Write-Host "Note: Run the application once to allow the Web Agent to download its driver." -ForegroundColor Cyan
