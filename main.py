@@ -2,6 +2,7 @@ import time
 import sys
 import os
 import subprocess
+import multiprocessing
 from core.task_executor import TaskExecutor
 from safeguards.admin_override import AdminOverride
 from safeguards.resource_monitor import ResourceMonitor
@@ -67,4 +68,7 @@ def main():
     trigger_auto_save()
 
 if __name__ == "__main__":
+    # This is critical for PyInstaller executables on Windows to prevent 
+    # recursive spawning of new processes and windows.
+    multiprocessing.freeze_support()
     main()
