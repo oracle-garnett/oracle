@@ -29,6 +29,9 @@ pyinstaller --noconfirm --onedir --windowed `
     --hidden-import "PIL._tkinter_finder" `
     --hidden-import "PIL.Image" `
     --hidden-import "PIL.ImageTk" `
+    --hidden-import "PIL.ImageDraw" `
+    --hidden-import "PIL.ImageFilter" `
+    --hidden-import "PIL.ImageFont" `
     --hidden-import "chromadb.telemetry.product.posthog" `
     --hidden-import "posthog" `
     --hidden-import "chromadb.api.rust" `
@@ -37,8 +40,9 @@ pyinstaller --noconfirm --onedir --windowed `
     --hidden-import "chromadb.migrations.embeddings" `
     main.py
 
-# 4. Ensure the assets folder is also copied to the root of the release folder for runtime access
+# 4. Ensure the assets and outputs folders are copied to the release folder
 Copy-Item -Path "assets" -Destination "release/Oracle AI Assistant/assets" -Recurse -Force
+New-Item -ItemType Directory -Force -Path "release/Oracle AI Assistant/outputs" | Out-Null
 
 Write-Host "--- Build Complete! ---" -ForegroundColor Green
 Write-Host "You can find your executable in the 'release/Oracle AI Assistant' folder." -ForegroundColor Yellow

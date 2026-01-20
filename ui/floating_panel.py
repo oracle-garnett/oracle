@@ -294,7 +294,7 @@ class OracleUI(ctk.CTk):
         self.input_entry.delete(0, tk.END)
         if user_input.strip():
             self.append_output(f"You: {user_input}", "white")
-            response = self.task_executor.execute_task(user_input)
+            response = self.task_executor.execute_task(user_input, ui_parent=self)
             self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_voice_command(self):
@@ -304,7 +304,7 @@ class OracleUI(ctk.CTk):
         text = self.task_executor.process_voice_input()
         if text:
             self.append_output(f"You (Voice): {text}", "white")
-            response = self.task_executor.execute_task(text)
+            response = self.task_executor.execute_task(text, ui_parent=self)
             self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
     def on_vision_command(self):

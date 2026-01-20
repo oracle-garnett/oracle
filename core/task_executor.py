@@ -12,6 +12,8 @@ import webbrowser
 import requests
 from bs4 import BeautifulSoup
 from core.web_agent import OracleWebAgent
+from core.image_artist import OracleImageArtist
+from ui.canvas_window import OracleCanvasWindow
 
 from memory.memory_manager import MemoryManager
 from safeguards.admin_override import AdminOverride
@@ -26,6 +28,8 @@ class TaskToolbox:
         self.desktop = os.path.join(self.home, "Desktop")
         self.documents = os.path.join(self.home, "Documents")
         self.web_agent = OracleWebAgent() # Initialize the web agent here
+        self.image_artist = OracleImageArtist() # Initialize the image artist
+        self.canvas_window = None
         
         # Determine the base directory for the dev folder
         if getattr(sys, 'frozen', False):
@@ -89,6 +93,32 @@ class TaskToolbox:
         except Exception as e:
             return f"FAILURE: I couldn't write the file. Error: {e}"
 
+    def create_artwork(self, description: str) -> str:
+        """
+        Digital Studio: Creates a new piece of artwork based on a description.
+        Currently uses drawing primitives to 'render' the idea.
+        """
+        self.image_artist.create_blank_canvas(800, 600, "white")
+        # Simple heuristic rendering for now
+        self.image_artist.draw_shape("rectangle", [50, 50, 750, 550], outline="blue", width=5)
+        self.image_artist.add_text(description[:50], (100, 250), font_size=40)
+        path = self.image_artist.save_canvas(f"artwork_{int(time.time())}.png")
+        return f"SUCCESS: I've rendered your idea: {path}"
+
+    def show_canvas(self, image_path: str, parent_ui) -> str:
+        """
+        Digital Studio: Opens the Live Canvas window to show artwork.
+        """
+        try:
+            if self.canvas_window and self.canvas_window.winfo_exists():
+                self.canvas_window.display_image(image_path)
+                self.canvas_window.focus()
+            else:
+                self.canvas_window = OracleCanvasWindow(parent_ui, image_path)
+            return f"SUCCESS: Canvas is now live showing {image_path}."
+        except Exception as e:
+            return f"FAILURE: Could not open canvas. Error: {e}"
+
 # --- Task Executor ---
 class TaskExecutor:
     def __init__(self, memory_manager: MemoryManager, admin_override: AdminOverride):
@@ -129,7 +159,7 @@ class TaskExecutor:
         except Exception as e:
             print(f"Error writing to log file: {e}")
 
-    def execute_task(self, user_input: str) -> str:
+    def execute_task(self, user_input: str, ui_parent=None) -> str:
         self.log_action(f"Received user input: '{user_input}'")
 
         if "phoenix install" in user_input.lower():
@@ -161,11 +191,14 @@ NEVER speak in the third person or refer to yourself as 'Oracle' in a cold way.
 
 To execute a task, you MUST use a Direct Command.
 
-	COMMAND: browse_and_scrape(url)
-	COMMAND: write_to_file(file_name, content, directory)
-	COMMAND: list_files(directory)
+		COMMAND: browse_and_scrape(url)
+		COMMAND: write_to_file(file_name, content, directory)
+		COMMAND: list_files(directory)
+		COMMAND: create_artwork(description)
+		COMMAND: show_canvas(image_path)
+	
+		Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
 
-	Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
 
 When you get search results, integrate them into your own voice and answer the user directly."""
             
@@ -201,6 +234,12 @@ When you get search results, integrate them into your own voice and answer the u
                 elif cmd_name == "list_files":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
+                elif cmd_name == "create_artwork" and len(args) >= 1:
+                    result = self.toolbox.create_artwork(args[0])
+                elif cmd_name == "show_canvas" and len(args) >= 1:
+                    # Extract path from result if it was just created
+                    path = args[0].split("saved to ")[-1] if "saved to " in args[0] else args[0]
+                    result = self.toolbox.show_canvas(path, ui_parent)
                 
                 # Soul Restoration: Force her to speak as herself when presenting results
                 summary_prompt = f"You are Oracle. You just performed a task and got this result: {result}\n\nPlease tell your 'dad' (the user) what you found in your own warm, first-person voice."
