@@ -87,3 +87,24 @@ class OracleImageArtist:
             self.current_canvas = Image.open(path).convert("RGB")
             return f"Opened image: {path}"
         return f"Error: File {path} not found."
+
+    def resize_image(self, width, height):
+        """Resizes the current canvas."""
+        if not self.current_canvas:
+            return "Error: No canvas active."
+        self.current_canvas = self.current_canvas.resize((width, height), Image.LANCZOS)
+        return f"Resized image to {width}x{height}."
+
+    def rotate_image(self, degrees):
+        """Rotates the current canvas."""
+        if not self.current_canvas:
+            return "Error: No canvas active."
+        self.current_canvas = self.current_canvas.rotate(degrees, expand=True)
+        return f"Rotated image by {degrees} degrees."
+
+    def crop_image(self, left, top, right, bottom):
+        """Crops the current canvas."""
+        if not self.current_canvas:
+            return "Error: No canvas active."
+        self.current_canvas = self.current_canvas.crop((left, top, right, bottom))
+        return f"Cropped image to ({left}, {top}, {right}, {bottom})."

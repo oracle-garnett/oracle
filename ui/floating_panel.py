@@ -105,7 +105,7 @@ class OracleUI(ctk.CTk):
         self.output_text = ctk.CTkTextbox(self, fg_color="#000000", text_color=self.theme["text_color"], font=(self.theme["font"][0], self.font_size))
         self.output_text.pack(fill="both", expand=True, padx=10, pady=5)
         # --- The requested greeting ---
-        self.output_text.insert("0.0", "Oracle: Hey dad, my systems are ready for your instructions.\n")
+        self.output_text.insert("0.0", "Oracle: Hey dad! I'm awake and ready to help. What are we working on today?\n")
         self.output_text.configure(state="disabled")
 
         # Input Area
