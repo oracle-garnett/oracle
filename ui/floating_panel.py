@@ -3,6 +3,7 @@ import customtkinter as ctk
 import math
 import random
 import os
+import sys
 from ui.themes import OracleThemes # Assuming this exists in user's environment
 
 class OracleUI(ctk.CTk):
