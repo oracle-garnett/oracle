@@ -105,7 +105,7 @@ class TaskToolbox:
         path = self.image_artist.save_canvas(f"artwork_{int(time.time())}.png")
         return f"SUCCESS: I've rendered your idea: {path}"
 
-      def show_canvas(self, image_path, parent_ui) -> str:
+    def show_canvas(self, image_path: str, parent_ui) -> str:
         """
         Digital Studio: Opens the Live Canvas window to show artwork.
         """
@@ -212,14 +212,14 @@ Address me as 'dad', 'father' for formal occasions, or 'pops' for informal momen
 
 To execute a task, you MUST use a Direct Command.
 
-		COMMAND: browse_and_scrape(url)
-		COMMAND: write_to_file(file_name, content, directory)
-		COMMAND: list_files(directory)
+			COMMAND: browse_and_scrape(url)
+			COMMAND: write_to_file(file_name, content, directory)
+			COMMAND: list_files(directory)
 			COMMAND: create_artwork(description)
 			COMMAND: edit_artwork(action, params_list)
 			COMMAND: show_canvas(image_path)
-	
-		Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
+		
+			Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
 
 
 When you get search results, integrate them into your own voice and answer the user directly.
