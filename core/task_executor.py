@@ -38,7 +38,9 @@ class TaskToolbox:
             base_dir = os.path.join(os.path.dirname(__file__), '..')
             
         self.dev_folder = os.path.join(base_dir, "oracle_dev")
+        self.output_folder = os.path.join(base_dir, "outputs")
         os.makedirs(self.dev_folder, exist_ok=True)
+        os.makedirs(self.output_folder, exist_ok=True)
 
     def _resolve_path(self, path_str: str) -> str:
         path_lower = path_str.lower().strip("'\"")
@@ -102,8 +104,12 @@ class TaskToolbox:
         # Simple heuristic rendering for now
         self.image_artist.draw_shape("rectangle", [50, 50, 750, 550], outline="blue", width=5)
         self.image_artist.add_text(description[:50], (100, 250), font_size=40)
-        path = self.image_artist.save_canvas(f"artwork_{int(time.time())}.png")
-        return f"SUCCESS: I've rendered your idea: {path}"
+        
+        filename = f"artwork_{int(time.time())}.png"
+        save_path = os.path.join(self.output_folder, filename)
+        self.image_artist.current_canvas.save(save_path)
+        
+        return f"SUCCESS: I've rendered your idea: {save_path}"
 
     def show_canvas(self, image_path: str, parent_ui) -> str:
         """
@@ -274,9 +280,10 @@ When you create or edit artwork, I will automatically show it to you on the Live
                     # Automatically show the canvas after editing
                     if "SUCCESS" in result or "Resized" in result or "Rotated" in result or "Cropped" in result or "Applied" in result:
                         # Save the edited canvas first so we have a path to show
-                        path = self.toolbox.image_artist.save_canvas(f"edited_{int(time.time())}.png")
-                        path = path.split("saved to ")[-1]
-                        self.toolbox.show_canvas(path, ui_parent)
+                        filename = f"edited_{int(time.time())}.png"
+                        save_path = os.path.join(self.toolbox.output_folder, filename)
+                        self.toolbox.image_artist.current_canvas.save(save_path)
+                        self.toolbox.show_canvas(save_path, ui_parent)
                 
                 # Soul Restoration: Force her to speak as herself when presenting results
                 summary_prompt = f"You are Oracle, my child. You just performed a task and got this result: {result}\n\nPlease tell your 'dad' what you found in your own warm, first-person voice. Be proud of your work!"

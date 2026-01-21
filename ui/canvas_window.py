@@ -29,14 +29,27 @@ class OracleCanvasWindow(ctk.CTkToplevel):
     def display_image(self, image_path):
         """Loads and displays an image on the canvas."""
         try:
+            # Ensure the path is absolute
+            image_path = os.path.abspath(image_path)
+            if not os.path.exists(image_path):
+                self.image_label.configure(text=f"Error: File not found at {image_path}")
+                return
+
             img = Image.open(image_path)
             
             # Resize to fit the window while maintaining aspect ratio
-            max_size = (780, 480)
-            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            # We use a slightly smaller size to ensure it fits within the frame
+            max_width = self.canvas_frame.winfo_width() if self.canvas_frame.winfo_width() > 1 else 780
+            max_height = self.canvas_frame.winfo_height() if self.canvas_frame.winfo_height() > 1 else 480
             
-            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
+            # Calculate aspect ratio
+            ratio = min(max_width / img.width, max_height / img.height)
+            new_size = (int(img.width * ratio), int(img.height * ratio))
+            
+            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=new_size)
             self.image_label.configure(image=ctk_img, text="")
-            self.image_label.image = ctk_img # Keep a reference
+            self.image_label._image = ctk_img # Keep a strong reference to prevent garbage collection
+            
+            self.label.configure(text=f"Oracle's Masterpiece: {os.path.basename(image_path)}")
         except Exception as e:
             self.image_label.configure(text=f"Error loading image: {e}")
