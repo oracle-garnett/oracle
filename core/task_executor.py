@@ -233,17 +233,21 @@ To execute a task, you MUST use a Direct Command.
 
 
 When you get search results, integrate them into your own voice and answer the user directly.
-When you create or edit artwork, I will automatically show it to you on the Live Canvas, so you don't need to call show_canvas separately unless you want to show an existing file."""
+When you create or edit artwork, I will automatically show it to you on the Live Canvas, so you don't need to call show_canvas separately unless you want to show an existing file.
+
+IMPORTANT: To perform an action, you MUST output the COMMAND: line exactly as shown above. Do not just talk about it, execute it!"""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
             # 2. --- DIRECT COMMAND EXECUTION ---
-            command_match = re.search(r'COMMAND:\s*(\w+)\((.*?)\)', response)
-            if command_match:
-                cmd_name = command_match.group(1)
+            # Improved regex to find commands even if they are slightly malformed or inside other text
+            command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response, re.DOTALL)
+            
+            if command_matches:
+                # We'll execute the first valid command found
+                cmd_name, arg_str = command_matches[0]
                 # Split arguments carefully, handling commas inside quotes
-                arg_str = command_match.group(2)
                 args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
                 
                 result = "FAILURE: I couldn't execute that command."

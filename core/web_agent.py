@@ -46,13 +46,17 @@ class OracleWebAgent:
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--window-size=1920,1080')
-            options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+            options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
             
             if platform.system() == "Windows":
                 # On Windows, let webdriver-manager handle the driver automatically
-                # This is more robust for local user environments
+                # We use the latest manager version to ensure compatibility with Chrome 128+
+                from webdriver_manager.chrome import ChromeDriverManager
+                from selenium.webdriver.chrome.service import Service as ChromeService
+                
+                # Force the manager to check for the latest version
                 driver_path = ChromeDriverManager().install()
-                service = Service(driver_path)
+                service = ChromeService(driver_path)
                 self.driver = webdriver.Chrome(service=service, options=options)
             else:
                 # On Linux (Sandbox environment), use the pre-installed Chromium/ChromeDriver
@@ -63,7 +67,13 @@ class OracleWebAgent:
             self._log("WebDriver initialized successfully.")
         except Exception as e:
             self._log(f"Error initializing WebDriver: {e}")
-            self.driver = None
+            # Fallback: Try to initialize without specific service if manager fails
+            try:
+                self.driver = webdriver.Chrome(options=options)
+                self._log("WebDriver initialized via fallback.")
+            except Exception as e2:
+                self._log(f"Fallback initialization failed: {e2}")
+                self.driver = None
 
     def close(self):
         """Closes the WebDriver."""
