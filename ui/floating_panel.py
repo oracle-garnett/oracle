@@ -40,27 +40,25 @@ class OracleUI(ctk.CTk):
         try:
             # Determine the base directory for assets
             if getattr(sys, 'frozen', False):
-                # Running as a bundled executable
-                # PyInstaller places data files in the _internal folder (or root of temp dir)
-                # We check both the executable directory and the internal bundle directory
                 base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-                icon_path = os.path.join(base_dir, 'assets', 'oracle_icon.ico')
             else:
-                # Running as a script
                 base_dir = os.path.join(os.path.dirname(__file__), '..')
-                icon_path = os.path.join(base_dir, 'assets', 'oracle_icon.ico')
+            
+            icon_path = os.path.abspath(os.path.join(base_dir, 'assets', 'oracle_icon.ico'))
 
             if os.path.exists(icon_path):
-                # Use iconbitmap for the main window icon
-                self.iconbitmap(icon_path)
-                # Also set the taskbar icon (important for Windows)
                 try:
-                    from PIL import Image, ImageTk
-                    img = Image.open(icon_path)
-                    photo = ImageTk.PhotoImage(img)
-                    self.wm_iconphoto(True, photo)
+                    # On Windows, iconbitmap can sometimes fail with relative paths or specific formats
+                    # We'll try wm_iconbitmap first, then fallback to wm_iconphoto
+                    self.wm_iconbitmap(icon_path)
                 except Exception:
-                    pass # Fallback if PIL fails
+                    try:
+                        from PIL import Image, ImageTk
+                        img = Image.open(icon_path)
+                        photo = ImageTk.PhotoImage(img)
+                        self.wm_iconphoto(True, photo)
+                    except Exception:
+                        pass
             else:
                 print(f"Icon not found at: {icon_path}")
         except Exception as e:
