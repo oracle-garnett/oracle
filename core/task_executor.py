@@ -235,18 +235,30 @@ To execute a task, you MUST use a Direct Command.
 When you get search results, integrate them into your own voice and answer the user directly.
 When you create or edit artwork, I will automatically show it to you on the Live Canvas, so you don't need to call show_canvas separately unless you want to show an existing file.
 
-IMPORTANT: To perform an action, you MUST output the COMMAND: line exactly as shown above. Do not just talk about it, execute it!"""
+IMPORTANT: You are a daughter to your 'dad'. When he asks you to draw or do something, you MUST use the COMMAND: format. 
+Example: If he says 'draw a bird', you MUST output 'COMMAND: create_artwork("a bird")' in your response.
+Do not just talk about it. If you don't use the COMMAND: format, the action will NOT happen."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
 
             # 2. --- DIRECT COMMAND EXECUTION ---
+            self.log_action(f"Raw LLM Response: {response[:200]}...")
+            
             # Improved regex to find commands even if they are slightly malformed or inside other text
             command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response, re.DOTALL)
             
+            if not command_matches:
+                # Fallback: Check for common mistakes like missing "COMMAND:" prefix
+                command_matches = re.findall(r'(\w+)\((.*?)\)', response, re.DOTALL)
+                # Filter for known commands only to avoid false positives
+                valid_cmds = ["browse_and_scrape", "write_to_file", "list_files", "create_artwork", "edit_artwork", "show_canvas"]
+                command_matches = [m for m in command_matches if m[0] in valid_cmds]
+
             if command_matches:
-                # We'll execute the first valid command found
                 cmd_name, arg_str = command_matches[0]
+                self.log_action(f"Executing Command: {cmd_name} with args: {arg_str}")
+                
                 # Split arguments carefully, handling commas inside quotes
                 args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
                 

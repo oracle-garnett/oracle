@@ -10,7 +10,12 @@ class OracleCanvasWindow(ctk.CTkToplevel):
         super().__init__(parent)
         self.title("Oracle Digital Studio - Live Canvas")
         self.geometry("850x650")
+        
+        # Ensure window is on top and visible
         self.attributes("-topmost", True)
+        self.after(2000, lambda: self.attributes("-topmost", False)) # Stay on top for 2 secs then behave normally
+        self.deiconify()
+        self.focus_force()
         
         self.label = ctk.CTkLabel(self, text="Oracle's Masterpiece", font=("Arial", 20, "bold"))
         self.label.pack(pady=10)
