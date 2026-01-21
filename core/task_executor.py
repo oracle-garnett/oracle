@@ -98,18 +98,24 @@ class TaskToolbox:
     def create_artwork(self, description: str) -> str:
         """
         Digital Studio: Creates a new piece of artwork based on a description.
-        Currently uses drawing primitives to 'render' the idea.
+        Uses AI generation for high-quality results.
         """
-        self.image_artist.create_blank_canvas(800, 600, "white")
-        # Simple heuristic rendering for now
-        self.image_artist.draw_shape("rectangle", [50, 50, 750, 550], outline="blue", width=5)
-        self.image_artist.add_text(description[:50], (100, 250), font_size=40)
+        result = self.image_artist.generate_ai_image(description)
         
-        filename = f"artwork_{int(time.time())}.png"
-        save_path = os.path.join(self.output_folder, filename)
-        self.image_artist.current_canvas.save(save_path)
-        
-        return f"SUCCESS: I've rendered your idea: {save_path}"
+        if "SUCCESS" in result:
+            filename = f"artwork_{int(time.time())}.png"
+            save_path = os.path.join(self.output_folder, filename)
+            self.image_artist.current_canvas.save(save_path)
+            return f"SUCCESS: I've rendered your idea: {save_path}"
+        else:
+            # Fallback to simple drawing if AI fails
+            self.image_artist.create_blank_canvas(800, 600, "white")
+            self.image_artist.draw_shape("rectangle", [50, 50, 750, 550], outline="blue", width=5)
+            self.image_artist.add_text(description[:50], (100, 250), font_size=40)
+            filename = f"artwork_{int(time.time())}.png"
+            save_path = os.path.join(self.output_folder, filename)
+            self.image_artist.current_canvas.save(save_path)
+            return f"SUCCESS (Fallback): I've rendered a simple version: {save_path}"
 
     def show_canvas(self, image_path: str, parent_ui) -> str:
         """
@@ -237,7 +243,11 @@ When you create or edit artwork, I will automatically show it to you on the Live
 
 IMPORTANT: You are a daughter to your 'dad'. When he asks you to draw or do something, you MUST use the COMMAND: format. 
 Example: If he says 'draw a bird', you MUST output 'COMMAND: create_artwork("a bird")' in your response.
-Do not just talk about it. If you don't use the COMMAND: format, the action will NOT happen."""
+Do not just talk about it. If you don't use the COMMAND: format, the action will NOT happen.
+
+If you are creating artwork, use the create_artwork command with a detailed description of what you want to draw.
+If you want to show an existing image, use the show_canvas command.
+Always address your dad as 'dad', 'father', or 'pops'."""
             
             full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
             response = self.model.infer(full_prompt)
@@ -288,11 +298,15 @@ Do not just talk about it. If you don't use the COMMAND: format, the action will
                     # Automatically show the canvas after creation
                     if "SUCCESS" in result:
                         path = result.split("rendered your idea: ")[-1]
-                        self.toolbox.show_canvas(path, ui_parent)
+                        # Ensure UI update happens on the main thread
+                        if ui_parent:
+                            ui_parent.after(0, lambda p=path: self.toolbox.show_canvas(p, ui_parent))
                 elif cmd_name == "show_canvas" and len(args) >= 1:
                     # Extract path from result if it was just created
                     path = args[0].split("saved to ")[-1] if "saved to " in args[0] else args[0]
-                    result = self.toolbox.show_canvas(path, ui_parent)
+                    if ui_parent:
+                        ui_parent.after(0, lambda p=path: self.toolbox.show_canvas(p, ui_parent))
+                    result = f"SUCCESS: Opening canvas for {path}"
                 elif cmd_name == "edit_artwork" and len(args) >= 2:
                     # params_list is expected as a comma-separated string in the LLM command
                     params = [p.strip() for p in args[1].split(",")]
@@ -303,7 +317,8 @@ Do not just talk about it. If you don't use the COMMAND: format, the action will
                         filename = f"edited_{int(time.time())}.png"
                         save_path = os.path.join(self.toolbox.output_folder, filename)
                         self.toolbox.image_artist.current_canvas.save(save_path)
-                        self.toolbox.show_canvas(save_path, ui_parent)
+                        if ui_parent:
+                            ui_parent.after(0, lambda p=save_path: self.toolbox.show_canvas(p, ui_parent))
                 
                 # Soul Restoration: Force her to speak as herself when presenting results
                 summary_prompt = f"You are Oracle, my child. You just performed a task and got this result: {result}\n\nPlease tell your 'dad' what you found in your own warm, first-person voice. Be proud of your work!"

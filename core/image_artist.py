@@ -26,6 +26,30 @@ class OracleImageArtist:
         self.current_canvas = Image.new("RGB", (width, height), color)
         return f"Created a {width}x{height} {color} canvas."
 
+    def generate_ai_image(self, prompt: str) -> str:
+        """
+        Generates a real image using Pollinations.ai API.
+        """
+        try:
+            import requests
+            import io
+            import random
+            
+            # Clean the prompt for URL
+            clean_prompt = requests.utils.quote(prompt)
+            seed = random.randint(0, 999999)
+            url = f"https://image.pollinations.ai/prompt/{clean_prompt}?seed={seed}&width=1024&height=1024&nologo=true"
+            
+            response = requests.get(url, timeout=30)
+            if response.status_code == 200:
+                image_data = response.content
+                self.current_canvas = Image.open(io.BytesIO(image_data))
+                return "SUCCESS: AI Image generated successfully."
+            else:
+                return f"FAILURE: API returned status {response.status_code}"
+        except Exception as e:
+            return f"FAILURE: Error generating AI image: {e}"
+
     def draw_shape(self, shape_type, coords, fill=None, outline="black", width=1):
         """Draws a shape (rectangle, ellipse) on the current canvas."""
         if not self.current_canvas:
