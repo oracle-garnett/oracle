@@ -29,36 +29,42 @@ class OracleModel:
 
     def infer(self, prompt: str) -> str:
         """
-        Generates a response using the local Ollama server.
+        Generates a response using the local Ollama server with retry logic.
         """
         if not self.is_loaded:
             return "Model not loaded. Please initialize the model first."
 
-        try:
-            # Connect to local Ollama server
-            # Using llama3:8b-instruct-q2_K for better performance on standard hardware
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": self.model_name, 
-                    "prompt": prompt,
-                    "stream": False
-                },
-                timeout=self.ollama_timeout
-            )
+        max_retries = 3
+        retry_delay = 2
+
+        for attempt in range(max_retries):
+            try:
+                # Connect to local Ollama server
+                response = requests.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": self.model_name, 
+                        "prompt": prompt,
+                        "stream": False
+                    },
+                    timeout=self.ollama_timeout
+                )
+                
+                if response.status_code == 200:
+                    # Ollama returns a JSON object per line, even if stream is false
+                    response_lines = response.text.strip().split('\n')
+                    last_line = response_lines[-1]
+                    return json.loads(last_line).get("response", "I received an empty response from the model.")
+                else:
+                    return f"Error from Ollama: {response.status_code}. Make sure 'ollama serve' is running."
             
-            if response.status_code == 200:
-                # Ollama returns a JSON object per line, even if stream is false
-                # We need to parse the last line for the full response
-                response_lines = response.text.strip().split('\n')
-                last_line = response_lines[-1]
-                return json.loads(last_line).get("response", "I received an empty response from the model.")
-            else:
-                return f"Error from Ollama: {response.status_code}. Make sure 'ollama serve' is running."
-        
-        except Exception as e:
-            # Fallback to a helpful message if Ollama isn't reachable
-            return f"I couldn't reach my local brain (Ollama). Error: {str(e)}. Please ensure 'ollama serve' is running in your terminal."
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                return f"I couldn't reach my local brain (Ollama) after {max_retries} attempts. Error: {str(e)}. Please ensure 'ollama serve' is running."
+            except Exception as e:
+                return f"I encountered an unexpected error with my brain: {str(e)}"
 
     def self_repair(self, error_details: str) -> str:
         """

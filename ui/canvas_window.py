@@ -37,8 +37,12 @@ class OracleCanvasWindow(ctk.CTkToplevel):
             # Ensure the path is absolute
             image_path = os.path.abspath(image_path)
             if not os.path.exists(image_path):
-                self.image_label.configure(text=f"Error: File not found at {image_path}")
+                self.image_label.configure(text=f"Error: File not found at {image_path}\n\nDad, I might have misplaced my drawing. Let me try again!")
                 return
+
+            # Add a small delay to ensure the file is fully written to disk
+            import time
+            time.sleep(0.5)
 
             img = Image.open(image_path)
             

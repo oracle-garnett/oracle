@@ -272,6 +272,17 @@ Always address your dad as 'dad', 'father', or 'pops'."""
                 # Split arguments carefully, handling commas inside quotes
                 args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
                 
+                # --- HEURISTIC FIX FOR PLACEHOLDERS ---
+                # If the LLM literally says "description" or "action", try to find the real intent in the response
+                if cmd_name == "create_artwork" and (args[0].lower() == "description" or args[0].lower() == "prompt"):
+                    # Look for text in quotes or after a colon in the response
+                    intent_match = re.search(r'description\s*["\'](.*?)["\']', response, re.IGNORECASE)
+                    if not intent_match:
+                        intent_match = re.search(r'draw\s+(.*?)(\.|\n|$)', response, re.IGNORECASE)
+                    if intent_match:
+                        args[0] = intent_match.group(1).strip()
+                        self.log_action(f"Heuristic fix: Changed placeholder to '{args[0]}'")
+
                 result = "FAILURE: I couldn't execute that command."
                 
                 # --- New Web Agent Commands ---
