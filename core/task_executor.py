@@ -118,9 +118,13 @@ class TaskToolbox:
         try:
             if self.canvas_window and self.canvas_window.winfo_exists():
                 self.canvas_window.display_image(image_path)
-                self.canvas_window.focus()
+                self.canvas_window.deiconify() # Bring to front if minimized
+                self.canvas_window.lift()      # Lift above other windows
+                self.canvas_window.focus_force()
             else:
                 self.canvas_window = OracleCanvasWindow(parent_ui, image_path)
+                self.canvas_window.lift()
+                self.canvas_window.focus_force()
             return f"SUCCESS: Canvas is now live showing {image_path}."
         except Exception as e:
             return f"FAILURE: Could not open canvas. Error: {e}"

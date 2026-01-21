@@ -38,27 +38,40 @@ class OracleUI(ctk.CTk):
     def set_icon(self):
         """Sets the window icon from the assets folder."""
         try:
+            # Fix for Windows Taskbar Icon: Set AppUserModelID
+            if sys.platform == "win32":
+                try:
+                    import ctypes
+                    myappid = 'oracle.ai.assistant.v1'
+                    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+                except Exception:
+                    pass
+
             # Determine the base directory for assets
             if getattr(sys, 'frozen', False):
                 base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
             else:
-                base_dir = os.path.join(os.path.dirname(__file__), '..')
+                # If running from ui/floating_panel.py, we need to go up one level
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             
-            icon_path = os.path.abspath(os.path.join(base_dir, 'assets', 'oracle_icon.ico'))
+            icon_path = os.path.join(base_dir, 'assets', 'oracle_icon.ico')
 
             if os.path.exists(icon_path):
+                # Use iconbitmap for the window frame icon
                 try:
-                    # On Windows, iconbitmap can sometimes fail with relative paths or specific formats
-                    # We'll try wm_iconbitmap first, then fallback to wm_iconphoto
-                    self.wm_iconbitmap(icon_path)
+                    self.iconbitmap(icon_path)
                 except Exception:
-                    try:
-                        from PIL import Image, ImageTk
-                        img = Image.open(icon_path)
-                        photo = ImageTk.PhotoImage(img)
-                        self.wm_iconphoto(True, photo)
-                    except Exception:
-                        pass
+                    pass
+                
+                # Use wm_iconphoto for the taskbar icon
+                try:
+                    from PIL import Image, ImageTk
+                    img = Image.open(icon_path)
+                    # Use a larger size for the taskbar if possible
+                    photo = ImageTk.PhotoImage(img)
+                    self.wm_iconphoto(True, photo)
+                except Exception:
+                    pass
             else:
                 print(f"Icon not found at: {icon_path}")
         except Exception as e:
@@ -287,12 +300,19 @@ class OracleUI(ctk.CTk):
             self.geometry(f"+{self.winfo_x() + deltax}+{self.winfo_y() + deltay}")
 
     # Functional Hooks
+    def append_output(self, text, color):
+        self.output_text.configure(state="normal")
+        self.output_text.insert(tk.END, text + "\n")
+        self.output_text.configure(state="disabled")
+        self.output_text.see(tk.END)
+
     def on_send(self, event=None):
-        # ... (Send logic)
         user_input = self.input_entry.get()
         self.input_entry.delete(0, tk.END)
         if user_input.strip():
             self.append_output(f"You: {user_input}", "white")
+            # We must ensure the UI updates so the user sees their message
+            self.update_idletasks()
             response = self.task_executor.execute_task(user_input, ui_parent=self)
             self.append_output(f"Oracle: {response}", self.theme["text_color"])
 
