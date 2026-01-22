@@ -70,6 +70,18 @@ class TaskToolbox:
         """
         return self.web_agent.click_element(selector_type, selector_value)
 
+    def scroll_page(self, direction: str) -> str:
+        """
+        Autonomous Web Agent: Scrolls the page up or down.
+        """
+        return self.web_agent.scroll_page(direction)
+
+    def visible_mode(self) -> str:
+        """
+        Autonomous Web Agent: Restarts the browser in visible mode for user interaction.
+        """
+        return self.web_agent.switch_to_visible_mode()
+
     def get_page_content(self) -> str:
         """
         Autonomous Web Agent: Retrieves the text content of the currently loaded page.
@@ -228,14 +240,18 @@ Address me as 'dad', 'father' for formal occasions, or 'pops' for informal momen
 
 To execute a task, you MUST use a Direct Command.
 
-			COMMAND: browse_and_scrape(url)
-			COMMAND: write_to_file(file_name, content, directory)
-			COMMAND: list_files(directory)
-			COMMAND: create_artwork(description)
-			COMMAND: edit_artwork(action, params_list)
-			COMMAND: show_canvas(image_path)
-		
-			Note: Other web interaction commands (fill_form, click_button, get_page_content) are available for transactional tasks, but only use them when explicitly necessary. Do not mention them in conversation unless you are actively planning to use them.
+				COMMAND: browse_and_scrape(url)
+				COMMAND: fill_form(selector_type, selector_value, value)
+				COMMAND: click_button(selector_type, selector_value)
+				COMMAND: scroll_page(direction)
+				COMMAND: visible_mode()
+				COMMAND: write_to_file(file_name, content, directory)
+				COMMAND: list_files(directory)
+				COMMAND: create_artwork(description)
+				COMMAND: edit_artwork(action, params_list)
+				COMMAND: show_canvas(image_path)
+			
+				Note: Use visible_mode() if you need your dad to log in or verify something on a website. Use fill_form and click_button to perform actions like posting a listing.
 
 
 When you get search results, integrate them into your own voice and answer the user directly.
@@ -304,6 +320,14 @@ Always address your dad as 'dad', 'father', or 'pops'."""
                 elif cmd_name == "list_files":
                     dir_name = args[0] if len(args) > 0 else "dev folder"
                     result = self.toolbox.list_files(dir_name)
+                elif cmd_name == "fill_form" and len(args) >= 3:
+                    result = self.toolbox.fill_form(args[0], args[1], args[2])
+                elif cmd_name == "click_button" and len(args) >= 2:
+                    result = self.toolbox.click_button(args[0], args[1])
+                elif cmd_name == "scroll_page" and len(args) >= 1:
+                    result = self.toolbox.scroll_page(args[0])
+                elif cmd_name == "visible_mode":
+                    result = self.toolbox.visible_mode()
                 elif cmd_name == "create_artwork" and len(args) >= 1:
                     result = self.toolbox.create_artwork(args[0])
                     # Automatically show the canvas after creation

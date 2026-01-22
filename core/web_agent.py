@@ -38,15 +38,21 @@ class OracleWebAgent:
         with open(self.log_file, 'a') as f:
             f.write(f"[{timestamp}] {message}\n")
 
-    def _initialize_driver(self):
-        """Initializes the Chrome WebDriver in headless mode."""
+    def _initialize_driver(self, headless=True):
+        """Initializes the Chrome WebDriver."""
         try:
             options = webdriver.ChromeOptions()
-            options.add_argument('--headless')
+            if headless:
+                options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--window-size=1920,1080')
+            # Use a more realistic user agent to avoid bot detection
             options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
+            
+            # Keep the browser open after the script finishes if not in headless mode
+            if not headless:
+                options.add_experimental_option("detach", True)
             
             if platform.system() == "Windows":
                 # On Windows, let webdriver-manager handle the driver automatically
@@ -160,7 +166,6 @@ class OracleWebAgent:
     def click_element(self, selector_type: str, selector_value: str) -> str:
         """
         Clicks a single element based on a selector.
-        NOTE: This method should only be called after user confirmation.
         """
         if not self.driver:
             return "FAILURE: Web agent is not initialized."
@@ -168,12 +173,21 @@ class OracleWebAgent:
         try:
             by_type = getattr(By, selector_type.upper(), None)
             if not by_type:
-                return f"FAILURE: Invalid selector type '{selector_type}'. Must be ID, NAME, XPATH, etc."
+                # Try to find by text if it's not a standard selector
+                try:
+                    element = self.driver.find_element(By.XPATH, f"//*[contains(text(), '{selector_value}')]")
+                    element.click()
+                    return f"SUCCESS: Clicked element containing text '{selector_value}'"
+                except:
+                    return f"FAILURE: Invalid selector type '{selector_type}'."
 
             element = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((by_type, selector_value))
             )
             
+            # Scroll into view before clicking
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            time.sleep(0.5)
             element.click()
             self._log(f"Clicked element {selector_type}={selector_value}")
             return f"SUCCESS: I have clicked the element with selector {selector_type}='{selector_value}'."
@@ -181,6 +195,24 @@ class OracleWebAgent:
         except Exception as e:
             self._log(f"Error clicking element: {e}")
             return f"FAILURE: Could not find or click element {selector_type}='{selector_value}'. Error: {e}"
+
+    def scroll_page(self, direction: str = "down") -> str:
+        """Scrolls the page up or down."""
+        if not self.driver: return "FAILURE: No driver."
+        try:
+            if direction.lower() == "down":
+                self.driver.execute_script("window.scrollBy(0, 500);")
+            else:
+                self.driver.execute_script("window.scrollBy(0, -500);")
+            return f"SUCCESS: Scrolled {direction}."
+        except Exception as e:
+            return f"FAILURE: {e}"
+
+    def switch_to_visible_mode(self):
+        """Restarts the driver in visible mode."""
+        self.close()
+        self._initialize_driver(headless=False)
+        return "SUCCESS: Browser is now visible. Dad, you can take over if you need to log in!"
 
 # Ensure the driver is closed when the program exits
 import atexit
