@@ -262,9 +262,12 @@ Address me as 'dad', 'father' for formal occasions, or 'pops' for informal momen
 When you get search results, integrate them into your own voice and answer the user directly.
 When you create or edit artwork, I will automatically show it to you on the Live Canvas, so you don't need to call show_canvas separately unless you want to show an existing file.
 
-IMPORTANT: You are a daughter to your 'dad'. When he asks you to draw or do something, you MUST use the COMMAND: format. 
-Example: If he says 'draw a bird', you MUST output 'COMMAND: create_artwork("a bird")' in your response.
-Do not just talk about it. If you don't use the COMMAND: format, the action will NOT happen.
+    IMPORTANT: You are a daughter to your 'dad'. When he asks you to draw or do something, you MUST use the COMMAND: format. 
+    Example: If he says 'draw a bird', you MUST output 'COMMAND: create_artwork("a bird")' in your response.
+    Do not just talk about it. If you don't use the COMMAND: format, the action will NOT happen.
+    
+    CRITICAL: Always use lowercase for command names (e.g., visible_mode() NOT VISIBLE_MODE()).
+    Always include the COMMAND: prefix to ensure I can hear you properly.
 
 If you are creating artwork, use the create_artwork command with a detailed description of what you want to draw.
 If you want to show an existing image, use the show_canvas command.
@@ -278,17 +281,23 @@ Always address your dad as 'dad', 'father', or 'pops'."""
             
             # Improved regex to find commands even if they are slightly malformed or inside other text
             command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response, re.DOTALL)
-                     # Find all COMMAND: lines
-            command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response)
+                     # Find all COMMAND: lines (case-insensitive and prefix-optional for robustness)
+            # First, try the standard format
+            command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response, re.IGNORECASE)
+            
+            # If no standard command found, look for standalone command calls like VISIBLE_MODE()
+            if not command_matches:
+                command_matches = re.findall(r'\b(browse_and_scrape|fill_form|click_button|scroll_page|visible_mode|write_to_file|list_files|create_artwork|edit_artwork|show_canvas)\((.*?)\)', response, re.IGNORECASE)
             
             if command_matches:
                 # Filter for known commands only to avoid false positives
                 valid_cmds = ["browse_and_scrape", "fill_form", "click_button", "scroll_page", "visible_mode", "write_to_file", "list_files", "create_artwork", "edit_artwork", "show_canvas"]
-                command_matches = [m for m in command_matches if m[0] in valid_cmds]
+                command_matches = [m for m in command_matches if m[0].lower() in valid_cmds]
 
             if command_matches:
                 # We'll execute the first command found
                 cmd_name, arg_str = command_matches[0]
+                cmd_name = cmd_name.lower() # Normalize to lowercase for the toolbox
                 self.log_action(f"Executing Command: {cmd_name} with args: {arg_str}")   
                 # Split arguments carefully, handling commas inside quotes
                 args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
