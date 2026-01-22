@@ -13,6 +13,28 @@ from ui.floating_panel import OracleUI
 # Global lock file path
 LOCK_FILE = os.path.join(tempfile.gettempdir(), "oracle_ai_assistant.lock")
 
+def is_process_running(pid):
+    """Check if a process with the given PID is still running."""
+    if pid <= 0:
+        return False
+    try:
+        if os.name == 'nt':
+            # Windows implementation
+            import ctypes
+            PROCESS_QUERY_INFORMATION = 0x0400
+            PROCESS_VM_READ = 0x0010
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, pid)
+            if handle == 0:
+                return False
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        else:
+            # POSIX implementation
+            os.kill(pid, 0)
+            return True
+    except (OSError, ImportError):
+        return False
+
 def initialize_oracle():
     """Initializes all core components of the Oracle AI assistant."""
     print("Initializing Oracle AI Assistant...")
@@ -43,19 +65,31 @@ def trigger_auto_save():
 def main():
     """The main loop for the Oracle application."""
     # Singleton Check: Ensure only one instance of the UI runs
-    if os.path.exists(LOCK_FILE):
-        # Check if the process that created the lock is still alive
-        # On Windows, we can't easily check PID without extra libs, 
-        # so we'll just assume if it's there, we shouldn't start another UI.
-        # However, we only want to block the UI, not the sub-processes.
-        if multiprocessing.current_process().name == "MainProcess":
-            print("Oracle is already running. Exiting duplicate instance.")
-            return
-
-    # Create lock file
     if multiprocessing.current_process().name == "MainProcess":
-        with open(LOCK_FILE, "w") as f:
-            f.write(str(os.getpid()))
+        if os.path.exists(LOCK_FILE):
+            try:
+                with open(LOCK_FILE, "r") as f:
+                    old_pid = int(f.read().strip())
+                
+                if is_process_running(old_pid):
+                    print(f"Oracle is already running (PID: {old_pid}). Exiting duplicate instance.")
+                    return
+                else:
+                    print("Found stale lock file. Cleaning up and starting fresh...")
+                    os.remove(LOCK_FILE)
+            except Exception as e:
+                print(f"Error checking lock file: {e}. Cleaning up...")
+                try:
+                    os.remove(LOCK_FILE)
+                except:
+                    pass
+
+        # Create lock file
+        try:
+            with open(LOCK_FILE, "w") as f:
+                f.write(str(os.getpid()))
+        except Exception as e:
+            print(f"Warning: Could not create lock file: {e}")
 
     try:
         task_executor, admin_override, resource_monitor = initialize_oracle()
