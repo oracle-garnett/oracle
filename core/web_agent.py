@@ -31,15 +31,16 @@ class OracleWebAgent:
             os.makedirs(log_dir)
             
         self.log_file = os.path.join(log_dir, 'web_agent.log')
-        self._initialize_driver()
+        # We don't initialize here to avoid opening a browser immediately on startup
+        # self._initialize_driver()
 
     def _log(self, message):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         with open(self.log_file, 'a') as f:
             f.write(f"[{timestamp}] {message}\n")
 
-    def _initialize_driver(self, headless=True):
-        """Initializes the Chrome WebDriver."""
+    def _initialize_driver(self, headless=False):
+        """Initializes the Chrome WebDriver. Defaulting to visible mode for Dad's oversight."""
         try:
             options = webdriver.ChromeOptions()
             if headless:
@@ -56,11 +57,9 @@ class OracleWebAgent:
             
             if platform.system() == "Windows":
                 # On Windows, let webdriver-manager handle the driver automatically
-                # We use the latest manager version to ensure compatibility with Chrome 128+
                 from webdriver_manager.chrome import ChromeDriverManager
                 from selenium.webdriver.chrome.service import Service as ChromeService
                 
-                # Force the manager to check for the latest version
                 driver_path = ChromeDriverManager().install()
                 service = ChromeService(driver_path)
                 self.driver = webdriver.Chrome(service=service, options=options)
@@ -84,12 +83,18 @@ class OracleWebAgent:
     def close(self):
         """Closes the WebDriver."""
         if self.driver:
-            self.driver.quit()
+            try:
+                self.driver.quit()
+            except:
+                pass
             self.driver = None
             self._log("WebDriver closed.")
 
     def navigate_and_scrape(self, url: str) -> str:
-        """Navigates to a URL and returns the parsed text content."""
+        """Navigates to a URL and returns the text content."""
+        if not self.driver:
+            self._initialize_driver(headless=False)
+            
         if not self.driver:
             return "FAILURE: Web agent is not initialized. Check logs for driver error."
 
@@ -140,8 +145,10 @@ class OracleWebAgent:
     def fill_form_element(self, selector_type: str, selector_value: str, value: str) -> str:
         """
         Fills a single form element based on a selector.
-        NOTE: This method should only be called after user confirmation.
         """
+        if not self.driver:
+            self._initialize_driver(headless=False)
+        
         if not self.driver:
             return "FAILURE: Web agent is not initialized."
         
@@ -167,6 +174,9 @@ class OracleWebAgent:
         """
         Clicks a single element based on a selector.
         """
+        if not self.driver:
+            self._initialize_driver(headless=False)
+        
         if not self.driver:
             return "FAILURE: Web agent is not initialized."
         
@@ -198,6 +208,9 @@ class OracleWebAgent:
 
     def scroll_page(self, direction: str = "down") -> str:
         """Scrolls the page up or down."""
+        if not self.driver:
+            self._initialize_driver(headless=False)
+            
         if not self.driver: return "FAILURE: No driver."
         try:
             if direction.lower() == "down":
@@ -209,7 +222,7 @@ class OracleWebAgent:
             return f"FAILURE: {e}"
 
     def switch_to_visible_mode(self):
-        """Restarts the driver in visible mode."""
+        """Restarts the driver in visible mode (redundant now but kept for compatibility)."""
         self.close()
         self._initialize_driver(headless=False)
         return "SUCCESS: Browser is now visible. Dad, you can take over if you need to log in!"
