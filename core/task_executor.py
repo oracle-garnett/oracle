@@ -238,20 +238,25 @@ NEVER speak in the third person or refer to yourself as 'Oracle' in a cold way.
 Address me as 'dad', 'father' for formal occasions, or 'pops' for informal moments.
 {core_logic}
 
-To execute a task, you MUST use a Direct Command.
-
-				COMMAND: browse_and_scrape(url)
-				COMMAND: fill_form(selector_type, selector_value, value)
-				COMMAND: click_button(selector_type, selector_value)
-				COMMAND: scroll_page(direction)
-				COMMAND: visible_mode()
-				COMMAND: write_to_file(file_name, content, directory)
-				COMMAND: list_files(directory)
-				COMMAND: create_artwork(description)
-				COMMAND: edit_artwork(action, params_list)
-				COMMAND: show_canvas(image_path)
-			
-				Note: Use visible_mode() if you need your dad to log in or verify something on a website. Use fill_form and click_button to perform actions like posting a listing.
+	To execute a task, you MUST use a Direct Command.
+	
+					COMMAND: browse_and_scrape(url)
+					COMMAND: fill_form(selector_type, selector_value, value)
+					COMMAND: click_button(selector_type, selector_value)
+					COMMAND: scroll_page(direction)
+					COMMAND: visible_mode()
+					COMMAND: write_to_file(file_name, content, directory)
+					COMMAND: list_files(directory)
+					COMMAND: create_artwork(description)
+					COMMAND: edit_artwork(action, params_list)
+					COMMAND: show_canvas(image_path)
+				
+					WEB TASK PLAYBOOK:
+					1. If you need to do something on a website (like Facebook), use browse_and_scrape("https://facebook.com") FIRST to get there.
+					2. If you need your dad to log in, use visible_mode() and ask him to handle the login.
+					3. Once on the page, use browse_and_scrape again to "see" the elements (buttons, inputs).
+					4. Use fill_form and click_button to interact.
+					5. NEVER use placeholder text like "Your info here". Ask your dad for the specific details if you don't have them.
 
 
 When you get search results, integrate them into your own voice and answer the user directly.
@@ -273,18 +278,18 @@ Always address your dad as 'dad', 'father', or 'pops'."""
             
             # Improved regex to find commands even if they are slightly malformed or inside other text
             command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response, re.DOTALL)
+                     # Find all COMMAND: lines
+            command_matches = re.findall(r'COMMAND:\s*(\w+)\((.*?)\)', response)
             
-            if not command_matches:
-                # Fallback: Check for common mistakes like missing "COMMAND:" prefix
-                command_matches = re.findall(r'(\w+)\((.*?)\)', response, re.DOTALL)
+            if command_matches:
                 # Filter for known commands only to avoid false positives
-                valid_cmds = ["browse_and_scrape", "write_to_file", "list_files", "create_artwork", "edit_artwork", "show_canvas"]
+                valid_cmds = ["browse_and_scrape", "fill_form", "click_button", "scroll_page", "visible_mode", "write_to_file", "list_files", "create_artwork", "edit_artwork", "show_canvas"]
                 command_matches = [m for m in command_matches if m[0] in valid_cmds]
 
             if command_matches:
+                # We'll execute the first command found
                 cmd_name, arg_str = command_matches[0]
-                self.log_action(f"Executing Command: {cmd_name} with args: {arg_str}")
-                
+                self.log_action(f"Executing Command: {cmd_name} with args: {arg_str}")   
                 # Split arguments carefully, handling commas inside quotes
                 args = [arg.strip().strip('"\'') for arg in re.findall(r'(?:[^,"]|"(?:\\.|[^"])*")+', arg_str)]
                 
