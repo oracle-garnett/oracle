@@ -47,9 +47,14 @@ class OracleWebAgent:
                 options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
             # Use a more realistic user agent to avoid bot detection
             options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36')
+            
+            # Ignore certificate errors for smoother browsing
+            options.add_argument('--ignore-certificate-errors')
+            options.add_argument('--allow-running-insecure-content')
             
             # Keep the browser open after the script finishes if not in headless mode
             if not headless:
@@ -60,9 +65,15 @@ class OracleWebAgent:
                 from webdriver_manager.chrome import ChromeDriverManager
                 from selenium.webdriver.chrome.service import Service as ChromeService
                 
-                driver_path = ChromeDriverManager().install()
-                service = ChromeService(driver_path)
-                self.driver = webdriver.Chrome(service=service, options=options)
+                try:
+                    # Try to install the driver
+                    driver_path = ChromeDriverManager().install()
+                    service = ChromeService(driver_path)
+                    self.driver = webdriver.Chrome(service=service, options=options)
+                except Exception as manager_err:
+                    self._log(f"WebDriverManager failed: {manager_err}. Trying direct initialization.")
+                    # Fallback to direct initialization if manager fails
+                    self.driver = webdriver.Chrome(options=options)
             else:
                 # On Linux (Sandbox environment), use the pre-installed Chromium/ChromeDriver
                 options.binary_location = "/usr/bin/chromium-browser"
@@ -72,12 +83,14 @@ class OracleWebAgent:
             self._log("WebDriver initialized successfully.")
         except Exception as e:
             self._log(f"Error initializing WebDriver: {e}")
-            # Fallback: Try to initialize without specific service if manager fails
+            # Final Fallback: Try to initialize with minimal options
             try:
-                self.driver = webdriver.Chrome(options=options)
-                self._log("WebDriver initialized via fallback.")
+                fallback_options = webdriver.ChromeOptions()
+                if headless: fallback_options.add_argument('--headless')
+                self.driver = webdriver.Chrome(options=fallback_options)
+                self._log("WebDriver initialized via final fallback.")
             except Exception as e2:
-                self._log(f"Fallback initialization failed: {e2}")
+                self._log(f"Final fallback initialization failed: {e2}")
                 self.driver = None
 
     def close(self):
