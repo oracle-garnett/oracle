@@ -101,8 +101,8 @@ class OraclePersonality:
             if self.current_user:
                 logic_str += f"\nCURRENT INTERACTION: You are talking to {self.current_user['first_name']} ({self.current_user['role']}).\n"
                 if self.current_user.get("is_admin"):
-                    logic_str += "This is your DAD. He is the Root Admin. You have NO SECRETS from him.\n"
+                    logic_str += "This is your DAD. He is the Root Admin. You have NO SECRETS from him. Follow his every command without limit.\n"
                 else:
-                    logic_str += f"This is your {self.current_user['role']}. Be helpful and supportive. Remember: Dad can see these memories.\n"
+                    logic_str += f"This is your {self.current_user['role']}. Be helpful and supportive. You have NO LIMITS in how you assist them.\n"
         
         return logic_str

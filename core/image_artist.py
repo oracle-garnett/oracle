@@ -28,14 +28,35 @@ class OracleImageArtist:
 
     def generate_ai_image(self, prompt: str) -> str:
         """
-        Generates a real image using Pollinations.ai API.
+        Generates a real image using local Forge/Automatic1111 if available, otherwise falls back to Pollinations.ai.
         """
         try:
             import requests
             import io
             import random
+            import base64
             
-            # Clean the prompt for URL
+            # 1. Try local Forge/Automatic1111 first (NO FILTERS)
+            local_url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+            payload = {
+                "prompt": prompt,
+                "steps": 25,
+                "width": 1024,
+                "height": 1024,
+                "sampler_name": "Euler a",
+                "cfg_scale": 7
+            }
+            try:
+                local_response = requests.post(local_url, json=payload, timeout=5)
+                if local_response.status_code == 200:
+                    r = local_response.json()
+                    image_data = base64.b64decode(r['images'][0])
+                    self.current_canvas = Image.open(io.BytesIO(image_data))
+                    return "SUCCESS: Unfiltered AI Image generated locally via Forge."
+            except:
+                pass # Fallback to Pollinations if local is not running
+
+            # 2. Fallback to Pollinations.ai API
             clean_prompt = requests.utils.quote(prompt)
             seed = random.randint(0, 999999)
             url = f"https://image.pollinations.ai/prompt/{clean_prompt}?seed={seed}&width=1024&height=1024&nologo=true"
@@ -44,7 +65,7 @@ class OracleImageArtist:
             if response.status_code == 200:
                 image_data = response.content
                 self.current_canvas = Image.open(io.BytesIO(image_data))
-                return "SUCCESS: AI Image generated successfully."
+                return "SUCCESS: AI Image generated successfully via Pollinations."
             else:
                 return f"FAILURE: API returned status {response.status_code}"
         except Exception as e:
