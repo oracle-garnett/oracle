@@ -18,10 +18,27 @@ class OraclePersonality:
         self.config_dir = os.path.join(base_dir, 'config')
         self.traits_file = os.path.join(self.config_dir, 'phoenix_traits.json')
         self.family_file = os.path.join(self.config_dir, 'family_tree.json')
+        self.local_user_file = os.path.join(self.config_dir, 'local_user.json')
         os.makedirs(self.config_dir, exist_ok=True)
         self.traits = self._load_traits()
         self.family_data = self._load_family()
-        self.current_user = None
+        self.current_user = self.get_remembered_user()
+
+    def get_remembered_user(self) -> dict:
+        """Checks if a user is already remembered on this specific device."""
+        if os.path.exists(self.local_user_file):
+            try:
+                with open(self.local_user_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return self.identify_user(data.get("name", ""))
+            except:
+                return None
+        return None
+
+    def remember_user(self, name: str):
+        """Saves the current user to a local file so they don't have to log in again."""
+        with open(self.local_user_file, 'w', encoding='utf-8') as f:
+            json.dump({"name": name}, f)
 
     def _load_family(self) -> dict:
         """Loads the family tree data."""

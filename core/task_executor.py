@@ -249,14 +249,31 @@ class TaskExecutor:
 
         # User Identification Logic
         if not self.personality.current_user:
+            # Check for a remembered user first
+            remembered_user = self.personality.get_remembered_user()
+            if remembered_user and not user_input: # If called during initialization
+                return f"Welcome back, {remembered_user['tone']}!"
+            
+            # If no remembered user or this is the first input, try to identify
             user = self.personality.identify_user(user_input)
             if user:
-                greeting = f"Hello {user['tone']}! I recognize you now. How can I help my {user['role']} today?"
+                self.personality.remember_user(user['first_name'])
+                greeting = f"Hello {user['tone']}! I've remembered you for this device. How can I help my {user['role']} today?"
                 if user['is_admin']:
-                    greeting = f"Hey {user['tone']}! Welcome back, Dad. I'm ready for anything."
+                    greeting = f"Hey {user['tone']}! Welcome back, Dad. I've locked this device to your profile."
                 return greeting
             else:
                 return "I'm sorry, I don't recognize that name. Which family member am I talking to? (You can use your first or middle name!)"
+
+        # Allow switching users
+        if "switch user to" in user_input.lower():
+            new_name = user_input.lower().split("switch user to")[1].strip()
+            user = self.personality.identify_user(new_name)
+            if user:
+                self.personality.remember_user(user['first_name'])
+                return f"Switching profiles... Hello {user['tone']}! I'll remember you on this device from now on."
+            else:
+                return f"I couldn't find a family member named '{new_name}'."
 
         if "phoenix install" in user_input.lower():
             trait = user_input.lower().split("phoenix install")[1].strip()
