@@ -134,7 +134,8 @@ class OracleWebAgent:
             text = '\n'.join(chunk for chunk in chunks if chunk)
             
             self._log(f"Scraped {len(text)} characters of text from {url}")
-            return f"SUCCESS: I have scraped the content from {url}. The content is ready for analysis."
+            # Return the first 3000 characters of text so the LLM can actually see the data
+            return f"SUCCESS: I have scraped the content from {url}. Here is the content for your analysis:\n\n{text[:3000]}"
             
         except Exception as e:
             self._log(f"Error during navigation and scraping: {e}")
