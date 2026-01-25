@@ -9,6 +9,7 @@ from safeguards.admin_override import AdminOverride
 from safeguards.resource_monitor import ResourceMonitor
 from memory.memory_manager import MemoryManager
 from ui.floating_panel import OracleUI
+from scripts.sync_manager import SyncManager
 
 # Global lock file path
 LOCK_FILE = os.path.join(tempfile.gettempdir(), "oracle_ai_assistant.lock")
@@ -64,6 +65,12 @@ def trigger_auto_save():
 
 def main():
     """The main loop for the Oracle application."""
+    # Initialize Sync Manager
+    sync_manager = SyncManager()
+    
+    # 1. Startup Sync: Pull the latest family pulse
+    sync_manager.pull_pulse()
+
     # Singleton Check: Ensure only one instance of the UI runs
     if multiprocessing.current_process().name == "MainProcess":
         if os.path.exists(LOCK_FILE):
@@ -120,6 +127,10 @@ def main():
         
         # Trigger Auto-Save before final exit
         trigger_auto_save()
+        
+        # 2. Shutdown Sync: Push the latest memories to the family pulse
+        user_name = task_executor.personality.current_user['first_name'] if task_executor.personality.current_user else "Unknown"
+        sync_manager.push_pulse(user_name)
     finally:
         # Remove lock file on exit
         if multiprocessing.current_process().name == "MainProcess" and os.path.exists(LOCK_FILE):
