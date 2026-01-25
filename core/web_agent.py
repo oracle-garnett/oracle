@@ -172,7 +172,7 @@ class OracleWebAgent:
                 return f"FAILURE: Invalid selector type '{selector_type}'. Must be ID, NAME, XPATH, etc."
 
             # Wait for element to be present and visible
-            element = WebDriverWait(self.driver, 15).until(
+            element = WebDriverWait(self.driver, 60).until(
                 EC.visibility_of_element_located((by_type, selector_value))
             )
             
@@ -210,7 +210,7 @@ class OracleWebAgent:
                 return f"FAILURE: Invalid selector type '{selector_type}'."
 
             # Wait for element to be clickable
-            element = WebDriverWait(self.driver, 15).until(
+            element = WebDriverWait(self.driver, 60).until(
                 EC.element_to_be_clickable((by_type, selector_value))
             )
             
