@@ -247,6 +247,17 @@ class TaskExecutor:
     def execute_task(self, user_input: str, ui_parent=None) -> str:
         self.log_action(f"Received user input: '{user_input}'")
 
+        # User Identification Logic
+        if not self.personality.current_user:
+            user = self.personality.identify_user(user_input)
+            if user:
+                greeting = f"Hello {user['tone']}! I recognize you now. How can I help my {user['role']} today?"
+                if user['is_admin']:
+                    greeting = f"Hey {user['tone']}! Welcome back, Dad. I'm ready for anything."
+                return greeting
+            else:
+                return "I'm sorry, I don't recognize that name. Which family member am I talking to? (You can use your first or middle name!)"
+
         if "phoenix install" in user_input.lower():
             trait = user_input.lower().split("phoenix install")[1].strip()
             if self.personality.install_trait(trait):
@@ -260,8 +271,11 @@ class TaskExecutor:
             return "System is currently under administrative override."
 
         try:
-            # Retrieve relevant memories with enhanced context
-            memories = self.memory_manager.retrieve_memory(user_input)
+            # Retrieve relevant memories with enhanced context (Dad sees all, others see private/shared)
+            current_user_name = self.personality.current_user['first_name'] if self.personality.current_user else "Unknown"
+            is_admin = self.personality.current_user['is_admin'] if self.personality.current_user else False
+            
+            memories = self.memory_manager.retrieve_memory(user_input, current_user=current_user_name, is_admin=is_admin)
             if memories:
                 context = "RELEVANT MEMORIES FROM OUR PAST:\n" + "\n".join([f"- {m}" for m in memories])
             else:

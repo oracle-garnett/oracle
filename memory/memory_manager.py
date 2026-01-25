@@ -31,14 +31,14 @@ class MemoryManager:
             with open(self.local_cache_path, 'w') as f:
                 json.dump([], f)
 
-    def store_interaction(self, user_input: str, response: str):
+    def store_interaction(self, user_input: str, response: str, user_name: str = "Unknown"):
         """Stores interaction in both RAG (for retrieval) and encrypted logs."""
         # 1. Add to RAG for semantic search
-        memory_text = f"User asked: {user_input} | Oracle replied: {response}"
-        self.rag_engine.add_memory(memory_text, metadata={"type": "interaction", "timestamp": time.time()})
+        memory_text = f"[{user_name}] User asked: {user_input} | Oracle replied: {response}"
+        self.rag_engine.add_memory(memory_text, metadata={"type": "interaction", "timestamp": time.time(), "user": user_name})
 
         # 2. Encrypt and store in local log
-        record = {"timestamp": time.time(), "user_input": user_input, "oracle_response": response}
+        record = {"timestamp": time.time(), "user": user_name, "user_input": user_input, "oracle_response": response}
         encrypted_record = self.encryptor.encrypt(json.dumps(record))
         
         try:
@@ -50,6 +50,17 @@ class MemoryManager:
         except Exception as e:
             print(f"Error storing memory: {e}")
 
-    def retrieve_memory(self, query: str) -> List[str]:
+    def retrieve_memory(self, query: str, current_user: str = "Unknown", is_admin: bool = False) -> List[str]:
         """Retrieves relevant memories using the RAG engine."""
-        return self.rag_engine.query_memory(query)
+        all_memories = self.rag_engine.query_memory(query)
+        
+        if is_admin:
+            # Dad sees everything
+            return all_memories
+        
+        # Others only see shared memories or their own private ones
+        filtered = []
+        for m in all_memories:
+            if f"[{current_user}]" in m or "[Shared]" in m or "[Unknown]" in m:
+                filtered.append(m)
+        return filtered

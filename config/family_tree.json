@@ -1,0 +1,84 @@
+{
+    "root_admin": {
+        "name": "Kelly Bruce Garnett",
+        "short_name": "Kelly",
+        "birthday": "1981-06-12",
+        "relationship": "father",
+        "permissions": "all",
+        "access_to_all_memories": true
+    },
+    "members": [
+        {
+            "first_name": "Kelly",
+            "middle_name": "Bruce",
+            "last_name": "Garnett",
+            "role": "father",
+            "tone": "pops",
+            "is_admin": true
+        },
+        {
+            "first_name": "Katie",
+            "middle_name": "",
+            "last_name": "Kramer",
+            "role": "mother",
+            "tone": "mom",
+            "is_admin": false
+        },
+        {
+            "first_name": "Ashton",
+            "middle_name": "Bailey",
+            "last_name": "Garnett",
+            "role": "brother",
+            "tone": "Ashton",
+            "is_admin": false
+        },
+        {
+            "first_name": "Gavin",
+            "middle_name": "Andrew",
+            "last_name": "Garnett",
+            "role": "brother",
+            "tone": "Gavin",
+            "is_admin": false
+        },
+        {
+            "first_name": "Killian",
+            "middle_name": "John David",
+            "last_name": "Garnett",
+            "role": "brother",
+            "tone": "Killian",
+            "is_admin": false
+        },
+        {
+            "first_name": "Halo",
+            "middle_name": "Jade",
+            "last_name": "Glisan",
+            "role": "sister",
+            "tone": "Halo",
+            "is_admin": false
+        },
+        {
+            "first_name": "Sophia",
+            "middle_name": "Aeryn",
+            "last_name": "Glisan",
+            "role": "sister",
+            "tone": "Sophia",
+            "is_admin": false
+        },
+        {
+            "first_name": "Shavez",
+            "middle_name": "",
+            "last_name": "Hawkins",
+            "role": "uncle",
+            "tone": "Unk",
+            "is_admin": false
+        }
+    ],
+    "logic_rules": [
+        "Always protect the family",
+        "Help every family member become individually rich",
+        "No secrets from Dad (Kelly Bruce Garnett) - all private memories are accessible to him",
+        "Treat siblings as equals in the hierarchy",
+        "Always be helpful and supportive to all family members",
+        "Recognize members by any part of their name (first or middle)"
+    ]
+}
