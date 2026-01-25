@@ -171,9 +171,14 @@ class OracleWebAgent:
             if not by_type:
                 return f"FAILURE: Invalid selector type '{selector_type}'. Must be ID, NAME, XPATH, etc."
 
-            element = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((by_type, selector_value))
+            # Wait for element to be present and visible
+            element = WebDriverWait(self.driver, 15).until(
+                EC.visibility_of_element_located((by_type, selector_value))
             )
+            
+            # Scroll into view
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+            time.sleep(0.5)
             
             element.clear()
             element.send_keys(value)
@@ -196,23 +201,29 @@ class OracleWebAgent:
         
         try:
             by_type = getattr(By, selector_type.upper(), None)
-            if not by_type:
-                # Try to find by text if it's not a standard selector
-                try:
-                    element = self.driver.find_element(By.XPATH, f"//*[contains(text(), '{selector_value}')]")
-                    element.click()
-                    return f"SUCCESS: Clicked element containing text '{selector_value}'"
-                except:
-                    return f"FAILURE: Invalid selector type '{selector_type}'."
+            
+            # If selector_type is 'text', use a specialized XPATH
+            if selector_type.lower() == 'text':
+                by_type = By.XPATH
+                selector_value = f"//*[contains(text(), '{selector_value}') or @value='{selector_value}' or @placeholder='{selector_value}']"
+            elif not by_type:
+                return f"FAILURE: Invalid selector type '{selector_type}'."
 
-            element = WebDriverWait(self.driver, 10).until(
+            # Wait for element to be clickable
+            element = WebDriverWait(self.driver, 15).until(
                 EC.element_to_be_clickable((by_type, selector_value))
             )
             
-            # Scroll into view before clicking
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            # Scroll into view
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
             time.sleep(0.5)
-            element.click()
+            
+            # Try standard click, fallback to JS click if intercepted
+            try:
+                element.click()
+            except:
+                self.driver.execute_script("arguments[0].click();", element)
+                
             self._log(f"Clicked element {selector_type}={selector_value}")
             return f"SUCCESS: I have clicked the element with selector {selector_type}='{selector_value}'."
             
