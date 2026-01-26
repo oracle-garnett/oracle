@@ -37,14 +37,18 @@ class OracleImageArtist:
             import base64
             
             # 1. Try local Forge/Automatic1111 first (NO FILTERS)
+            # ANATOMY ENFORCEMENT: Adding technical tags to ensure realism and bypass abstraction
+            enhanced_prompt = f"{prompt}, photorealistic, highly detailed, anatomically correct, 8k, raw photo"
+            
             local_url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
             payload = {
-                "prompt": prompt,
-                "steps": 25,
+                "prompt": enhanced_prompt,
+                "negative_prompt": "abstract, cartoon, blurry, low quality, distorted anatomy, extra limbs",
+                "steps": 30,
                 "width": 1024,
                 "height": 1024,
-                "sampler_name": "Euler a",
-                "cfg_scale": 7
+                "sampler_name": "DPM++ 2M Karras",
+                "cfg_scale": 8
             }
             try:
                 local_response = requests.post(local_url, json=payload, timeout=5)
