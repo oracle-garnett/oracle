@@ -36,29 +36,57 @@ class OracleImageArtist:
             import random
             import base64
             
-            # 1. Try local Forge/Automatic1111 first (NO FILTERS)
+            # 1. Try local Fooocus first (Laptop Friendly & NO FILTERS)
             # ANATOMY ENFORCEMENT: Adding technical tags to ensure realism and bypass abstraction
             enhanced_prompt = f"{prompt}, photorealistic, highly detailed, anatomically correct, 8k, raw photo"
             
-            local_url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+            fooocus_url = "http://127.0.0.1:8888/predict" # Default Fooocus API port
             payload = {
-                "prompt": enhanced_prompt,
-                "negative_prompt": "abstract, cartoon, blurry, low quality, distorted anatomy, extra limbs",
-                "steps": 30,
-                "width": 1024,
-                "height": 1024,
-                "sampler_name": "DPM++ 2M Karras",
-                "cfg_scale": 8
+                "fn_index": 33, # Standard Fooocus txt2img index
+                "data": [
+                    enhanced_prompt, # prompt
+                    "abstract, cartoon, blurry, low quality, distorted anatomy, extra limbs", # negative_prompt
+                    "None", # style
+                    "Quality", # performance
+                    "1024*1024", # resolution
+                    1, # image_number
+                    random.randint(0, 999999), # seed
+                    0.75, # sharpness
+                    2, # guidance_scale
+                    "dpmpp_2m_sde_gpu", # sampler
+                    "karras", # scheduler
+                    True, # enable_refiner
+                    "None", # refiner_model
+                    0.5, # refiner_switch
+                    [], # loras
+                    True, # input_image_checkbox
+                    "None", # input_image_control
+                    0.6, # input_image_strength
+                    "None" # input_image_mask
+                ],
+                "session_hash": "oracle_session"
             }
             try:
-                local_response = requests.post(local_url, json=payload, timeout=5)
+                local_response = requests.post(fooocus_url, json=payload, timeout=10)
                 if local_response.status_code == 200:
                     r = local_response.json()
-                    image_data = base64.b64decode(r['images'][0])
-                    self.current_canvas = Image.open(io.BytesIO(image_data))
-                    return "SUCCESS: Unfiltered AI Image generated locally via Forge."
+                    # Fooocus returns a list of image paths or base64
+                    image_url = f"http://127.0.0.1:8888/file={r['data'][0][0]['name']}"
+                    img_res = requests.get(image_url)
+                    self.current_canvas = Image.open(io.BytesIO(img_res.content))
+                    return "SUCCESS: Unfiltered AI Image generated locally via Fooocus."
             except:
-                pass # Fallback to Pollinations if local is not running
+                # Try Forge as a secondary local fallback
+                forge_url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+                try:
+                    forge_res = requests.post(forge_url, json={"prompt": enhanced_prompt}, timeout=5)
+                    if forge_res.status_code == 200:
+                        r = forge_res.json()
+                        image_data = base64.b64decode(r['images'][0])
+                        self.current_canvas = Image.open(io.BytesIO(image_data))
+                        return "SUCCESS: Unfiltered AI Image generated locally via Forge."
+                except:
+                    pass
 
             # 2. Fallback to Pollinations.ai API
             clean_prompt = requests.utils.quote(prompt)
