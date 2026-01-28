@@ -52,14 +52,18 @@ class OraclePersonality:
 
     def identify_user(self, name_input: str) -> dict:
         """Identifies a family member by any part of their name."""
-        if not self.family_data:
+        if not self.family_data or not name_input:
             return None
         
         name_input = name_input.lower().strip()
+        # Remove common filler words
+        name_input = name_input.replace("i am", "").replace("my name is", "").replace("this is", "").strip()
+        
         for member in self.family_data.get("members", []):
             first = member.get("first_name", "").lower()
             middle = member.get("middle_name", "").lower()
             
+            # Check for exact match or if the input contains the name
             if name_input == first or name_input == middle or name_input in f"{first} {middle}".lower():
                 self.current_user = member
                 return member

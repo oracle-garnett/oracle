@@ -32,12 +32,18 @@ class SyncManager:
     def pull_pulse(self):
         """Pulls the latest family memory and traits from GitHub."""
         print("Oracle is checking for family updates...")
-        # Fetch and merge changes
-        success, output = self._run_git(['pull', 'origin', 'main', '--rebase'])
+        # Fetch and merge changes - using merge instead of rebase to preserve local history
+        success, output = self._run_git(['pull', 'origin', 'main', '--no-rebase'])
         if success:
             print("Sync Complete: Oracle is now up to date with the family.")
         else:
-            print(f"Sync Warning: Could not reach the family pulse. {output}")
+            # If rebase/merge fails, try a simple fetch and merge
+            self._run_git(['fetch', 'origin'])
+            success, output = self._run_git(['merge', 'origin/main', '-X', 'ours'])
+            if success:
+                print("Sync Complete (Merged): Oracle is now up to date with the family.")
+            else:
+                print(f"Sync Warning: Could not reach the family pulse. {output}")
         return success
 
     def push_pulse(self, user_name="Unknown"):
