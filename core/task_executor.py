@@ -373,7 +373,7 @@ If you are creating artwork, use the create_artwork command with a detailed desc
 If you want to show an existing image, use the show_canvas command.
 Always address your dad as 'dad', 'father', or 'pops'."""
             
-            full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\nUser: {user_input}"
+            full_prompt = f"{system_prompt}\n\nContext:\n{context}\n{visual_info}\n\n### CURRENT CONVERSATION ###\nUser: {user_input}\nOracle:"
             response = self.model.infer(full_prompt)
 
             # 2. --- DIRECT COMMAND EXECUTION ---
