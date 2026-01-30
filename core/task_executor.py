@@ -223,7 +223,7 @@ class TaskExecutor:
 
     def _load_config(self):
         return {
-            "ollama_model": "llama3.2-3b-abliterated", # Switched to Abliterated model for absolute obedience
+            "ollama_model": "huihui_ai/llama3.2-abliterate:3b", # Switched to Abliterated model for absolute obedience
             "ollama_timeout": 3000,
             "curiosity_chance": 0.30
         }
