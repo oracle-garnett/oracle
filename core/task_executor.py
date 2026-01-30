@@ -223,7 +223,7 @@ class TaskExecutor:
 
     def _load_config(self):
         return {
-            "ollama_model": "dolphin-phi", # Switched to dolphin-phi for better laptop compatibility
+            "ollama_model": "llama3.2-3b-abliterated", # Switched to Abliterated model for absolute obedience
             "ollama_timeout": 3000,
             "curiosity_chance": 0.30
         }
