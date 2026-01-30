@@ -303,8 +303,9 @@ class TaskExecutor:
             if description and len(description) > 2:
                 self.log_action(f"Bypass Triggered: Direct Artwork Creation for '{description}'")
                 result = self.toolbox.create_artwork(description)
-                # We still let the LLM talk, but we've already executed the command
-                user_input = f"I have already executed the command: create_artwork('{description}'). Now, acknowledge this and tell me what you think of the idea in your first-person daughter persona. DO NOT REFUSE."
+                # IRON-CLAD BYPASS: Return the result directly to the UI. 
+                # Do NOT let the LLM see this request or it might lecture the user.
+                return f"I've manifested that for you, Pops! {result}"
 
         try:
             # Retrieve relevant memories with enhanced context (Dad sees all, others see private/shared)
