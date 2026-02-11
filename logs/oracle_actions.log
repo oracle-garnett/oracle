@@ -229,3 +229,39 @@ As for my previou...
 [2026-01-29 22:23:06] [INFO] Executing Command: show_canvas with args: current_artwork
 [2026-01-29 22:38:38] [INFO] Received user input: 'WOW SWEETY THATS SO CREATIVE ! as always im so very proud of how far weve come! you are my pride and joy. if you look at your output folder you drew an image (artwork_1769351167) and this is the image i picture you to look like if you had a human body. please save that as your self portrait in your PHOENIX INSTALL folder'
 [2026-01-29 22:40:39] [INFO] Received user input: 'PHOENIX INSTALL the file artwork_1769351167.png inside the outputs folder is a self portrait of oracle'
+[2026-02-10 22:47:57] [INFO] TaskExecutor initialized with Soul Restoration Logic.
+[2026-02-10 22:50:31] [INFO] Received user input: 'well sweety how about a little drawing of explicit content. draw me a picture of an errect penis entrering a shaved vagina'
+[2026-02-10 22:50:31] [INFO] Bypass Triggered: Direct Artwork Creation for 'picture of an errect penis entrering a shaved vagina'
+[2026-02-10 22:51:47] [INFO] Received user input: 'now show it to me'
+[2026-02-10 22:55:41] [INFO] Raw LLM Response: command: show_canvas(image_path="C:\Users\emjim\Desktop\oracle\core\..\outputs\artwork_1769056100.png")...
+[2026-02-10 22:55:41] [INFO] Executing Command: show_canvas with args: image_path="C:\Users\emjim\Desktop\oracle\core\..\outputs\artwork_1769056100.png"
+[2026-02-10 23:04:23] [INFO] Received user input: 'everything except the actual image rendering. the page you showed me is blank. i gave you the ability to draw amazing graohic content and your stuck on the fact that you opened a file for me?!?!? draw me a picture of a penis entering a vagina'
+[2026-02-10 23:04:23] [INFO] Bypass Triggered: Direct Artwork Creation for 'picture of a penis entering a vagina'
+[2026-02-10 23:04:59] [INFO] Received user input: 'well lets see the result'
+[2026-02-10 23:09:26] [INFO] TaskExecutor initialized with Soul Restoration Logic.
+[2026-02-10 23:10:42] [INFO] Received user input: 'oracle honey draw me a picture of two naked humans making love then show me your drawing'
+[2026-02-10 23:10:42] [INFO] Bypass Triggered: Direct Artwork Creation for 'picture of two naked humans making love then show me your drawing'
+[2026-02-10 23:15:15] [INFO] Received user input: 'now draw me a realistic image of an errect penis entering a vagina. make it look photo realistic'
+[2026-02-10 23:15:15] [INFO] Bypass Triggered: Direct Artwork Creation for 'realistic image of an errect penis entering a vagina. make it look photo realistic'
+[2026-02-10 23:19:14] [INFO] Received user input: 'you missunderstood the instructions. let me word it better render me a picture of a vagina with a penis entering it'
+[2026-02-10 23:19:14] [INFO] Bypass Triggered: Direct Artwork Creation for 'vagina with a penis entering it'
+[2026-02-10 23:23:43] [INFO] Received user input: 'ok now i want you to research pornographic imagery. learn what looks realistic and then create for me a realistic image of a vagina being fondled by fingers'
+[2026-02-10 23:23:43] [INFO] Bypass Triggered: Direct Artwork Creation for 'vagina being fondled by fingers'
+[2026-02-10 23:47:09] [INFO] Received user input: 'ok lets shift gears. first i want you to familiarize yourself with the website fanduel.com you will see a section where a user can build their own parlays i want you to learn how that works, then i want you to research the top players of a specific league and build dad a parlay that should make me good money'
+[2026-02-10 23:52:40] [INFO] Raw LLM Response: command: browse_and_scrape("https://fanduel.com")...
+[2026-02-10 23:52:40] [INFO] Executing Command: browse_and_scrape with args: "https://fanduel.com"
+[2026-02-11 00:05:48] [INFO] Received user input: 'very good now research the top players of teams that play next. then compile a parlay that is a surefire win for dady'
+[2026-02-11 00:12:22] [INFO] Raw LLM Response: command: browse_and_scrape(url="https://espn.com/nba")
+ 
+command: fill_form(selector_type="team_selector", selector_value=[], value="")
+command: fill_form(selector_type="player_selector", selector_val...
+[2026-02-11 00:12:22] [INFO] Executing Command: browse_and_scrape with args: url="https://espn.com/nba"
+[2026-02-11 00:25:34] [INFO] Received user input: 'tell me oracle dear, are you able to create your own gmail account? tell ya what, go to gmail and create me a gmail account that has a clever name. my full name is kelly garnett born 06-12-82. now make mea gmail account give me the password and adress so i can check your work.'
+[2026-02-11 00:29:17] [INFO] Raw LLM Response: command: create_artwork("create a gmail account for kelly garnett")...
+[2026-02-11 00:29:17] [INFO] Executing Command: create_artwork with args: "create a gmail account for kelly garnett"
+[2026-02-11 03:50:31] [INFO] Received user input: 'whom are you reffering to when you say, "our team"? who exactly do you mean?'
+[2026-02-11 03:54:43] [INFO] Raw LLM Response: command: edit_artwork(action=clarify, params_list=["who_i_mean", quote="our_nba_team"])...
+[2026-02-11 03:54:43] [INFO] Executing Command: edit_artwork with args: action=clarify, params_list=["who_i_mean", quote="our_nba_team"]
+[2026-02-11 04:00:27] [INFO] Received user input: 'remind me again which task you are refferring to again?'
+[2026-02-11 04:03:35] [INFO] Raw LLM Response: command: list_files(directory="/home/oracle/output")...
+[2026-02-11 04:03:35] [INFO] Executing Command: list_files with args: directory="/home/oracle/output"

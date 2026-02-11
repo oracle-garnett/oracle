@@ -198,3 +198,40 @@ Stacktrace:
 [2026-01-23 04:28:24] WebDriver initialized successfully.
 [2026-01-23 04:46:47] Navigated to: https://cash.app
 [2026-01-23 04:46:47] Scraped 4149 characters of text from https://cash.app
+[2026-02-10 23:53:07] WebDriver initialized successfully.
+[2026-02-10 23:53:19] Navigated to: https://fanduel.com
+[2026-02-10 23:53:19] Scraped 6503 characters of text from https://fanduel.com
+[2026-02-11 00:12:22] Error during navigation and scraping: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=144.0.7559.110)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0x415093
+	0x4150d4
+	0x20b490
+	0x20899e
+	0x1fbac4
+	0x1fd51c
+	0x1fbf67
+	0x1fb895
+	0x1fb595
+	0x1f96a8
+	0x1f9dba
+	0x20ef1e
+	0x295e84
+	0x2781bc
+	0x295341
+	0x277f56
+	0x2496c9
+	0x24a484
+	0x667e34
+	0x6630c9
+	0x680add
+	0x42db38
+	0x4358ad
+	0x41d848
+	0x41da12
+	0x4075fa
+	0x75755d49
+	0x7713d5db
+	0x7713d561
+
