@@ -235,3 +235,6 @@ Symbols not available. Dumping unresolved backtrace:
 	0x7713d5db
 	0x7713d561
 
+[2026-03-11 03:03:56] WebDriver initialized successfully.
+[2026-03-11 03:04:05] Navigated to: https://www.google.com/search?q=cheapest+hotel+motel+rooms+in+baytown+texas+right+now
+[2026-03-11 03:04:05] Scraped 1250 characters of text from https://www.google.com/search?q=cheapest+hotel+motel+rooms+in+baytown+texas+right+now
