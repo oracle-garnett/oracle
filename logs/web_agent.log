@@ -239,3 +239,13 @@ Symbols not available. Dumping unresolved backtrace:
 [2026-03-11 03:04:05] Navigated to: https://www.google.com/search?q=cheapest+hotel+motel+rooms+in+baytown+texas+right+now
 [2026-03-11 03:04:05] Scraped 1250 characters of text from https://www.google.com/search?q=cheapest+hotel+motel+rooms+in+baytown+texas+right+now
 [2026-05-18 15:27:55] WebDriver initialized successfully.
+[2026-05-28 12:57:23] WebDriverManager failed: Could not reach host. Are you offline?. Trying direct initialization.
+[2026-05-28 12:57:23] Error initializing WebDriver: Message: Unable to obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+[2026-05-28 12:57:23] Final fallback initialization failed: Message: Unable to obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+[2026-05-30 18:56:41] WebDriverManager failed: Could not reach host. Are you offline?. Trying direct initialization.
+[2026-05-30 18:56:41] Error initializing WebDriver: Message: Unable to obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
+[2026-05-30 18:56:41] Final fallback initialization failed: Message: Unable to obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+
